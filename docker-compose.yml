@@ -1,0 +1,24 @@
+# Локальный PostgreSQL для разработки (совпадает с шаблоном .env.example).
+name: student-tasks-backend
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: student_tasks_db
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: student_tasks
+    # Порт на хосте выше 10000 — реже занят вторым экземпляром PostgreSQL (у вас были 5432 и 5433).
+    ports:
+      - "15432:5432"
+    volumes:
+      - student_tasks_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d student_tasks"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  student_tasks_pgdata:

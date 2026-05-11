@@ -1,0 +1,516 @@
+{% extends "base.html" %}
+{% block title %}Профиль{% endblock %}
+{% block content %}
+<div class="profile-layout">
+  <section class="profile-card">
+    <div class="panel-header profile-header">
+      <h1>Профиль</h1>
+      <form action="/ui/logout" method="post" class="profile-logout-form">
+        <button type="submit" class="ghost">Выйти</button>
+      </form>
+    </div>
+    <form method="post" action="/ui/profile" class="stack" enctype="multipart/form-data" id="profile-avatar-form">
+      <div class="profile-avatar">
+        <div class="avatar-uploader" id="avatar-uploader">
+          {% if user.avatar_base64 %}
+          <img src="{{ user.avatar_base64 }}" alt="Аватар" class="avatar-image">
+          {% else %}
+          <div class="avatar-placeholder">Нет фото</div>
+          {% endif %}
+          <label class="avatar-overlay">
+            <span>Загрузить фото</span>
+            <input type="file" name="avatar_file" accept="image/*" id="avatar-input">
+          </label>
+        </div>
+      </div>
+    </form>
+    <div class="profile-summary">
+      <div>
+        <div class="profile-label">Почта</div>
+        <div class="profile-value">{{ user.email }}</div>
+      </div>
+      <div>
+        <div class="profile-label">ФИО</div>
+        <div class="profile-value">{{ user.last_name or '—' }} {{ user.first_name or '' }} {{ user.patronymic or '' }}</div>
+      </div>
+      <div>
+        <div class="profile-label">Дата рождения</div>
+        <div class="profile-value">{% if user.birth_date %}{{ user.birth_date.strftime('%d.%m.%Y') }}{% else %}—{% endif %}</div>
+      </div>
+      <div>
+        <div class="profile-label">Группа</div>
+        <div class="profile-value">{{ user.group_name or '—' }}</div>
+      </div>
+    </div>
+    <div class="actions">
+      <button type="button" class="ghost" id="profile-edit">Изменить</button>
+    </div>
+  </section>
+  <section class="deadline-panel">
+    <div class="panel-header">
+      <h2>Мои дедлайны</h2>
+      <button type="button" class="ghost circle" id="profile-new-task">+</button>
+    </div>
+    <div style="padding: 8px 0; display: flex; align-items: center; gap: 6px; font-size: 13px; color: #666;">
+      <span>Сортировать по:</span>
+      <select id="sort-select" class="sort-select" style="padding: 4px 8px; border-radius: 3px; border: 1px solid #d9d9d9; background: white; cursor: pointer; font-size: 13px;">
+        <option value="">—</option>
+        <option value="subject-asc">По предмету А-Я</option>
+        <option value="subject-desc">По предмету Я-А</option>
+        <option value="due-asc">По срокам (ближайшие)</option>
+        <option value="due-desc">По срокам (позже)</option>
+        <option value="status-active">Активные первыми</option>
+      </select>
+    </div>
+    {% if not tasks %}
+      <p class="hint">Пока нет задач.</p>
+    {% else %}
+      <div class="deadline-list">
+        {% for t in tasks %}
+        <div class="deadline-card" data-due="{% if t.due_at %}{{ t.due_at.isoformat() }}{% endif %}" data-status="{{ t.status }}" data-task-id="{{ t.id }}">
+          <div class="deadline-head">
+            <span class="status-indicator-card" {% if t.status == 'done' %}style="color: #52c41a;"{% else %}style="color: #ff4d4f;"{% endif %}>●</span>
+            <div class="deadline-title">{{ t.title }}</div>
+            <div class="deadline-actions">
+              <button type="button" class="icon-btn task-edit-btn" title="Редактировать" data-task-id="{{ t.id }}">✎</button>
+              <form class="inline" action="/ui/tasks/{{ t.id }}/delete" method="post" onsubmit="return confirm('Удалить задачу?');" style="margin: 0;">
+                <button type="submit" class="icon-btn danger" title="Удалить">🗑</button>
+              </form>
+              <label class="checkbox-inline">
+                <input type="checkbox" class="task-status-checkbox" data-task-id="{{ t.id }}" {% if t.status == 'done' %}checked{% endif %}>
+                <span class="checkbox-visual"></span>
+              </label>
+            </div>
+          </div>
+          <div class="deadline-meta">
+            {% if t.due_at %}{{ t.due_at.strftime('%Y-%m-%d %H:%M') }}{% else %}без даты{% endif %}
+          </div>
+          {% if t.subject %}<div class="deadline-subject">{{ t.subject }}</div>{% endif %}
+          {% if t.body %}<div class="deadline-body">{{ t.body }}</div>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </section>
+</div>
+
+<div class="modal" id="profile-edit-modal" aria-hidden="true">
+  <div class="modal-backdrop" data-close="modal"></div>
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3>Редактирование профиля</h3>
+      <div class="modal-actions">
+        <form class="inline" action="/ui/logout" method="post" style="margin: 0;">
+          <button type="submit" class="ghost icon-btn" title="Выход">🚪</button>
+        </form>
+        <button type="button" class="ghost" data-close="modal">×</button>
+      </div>
+    </div>
+    <form method="post" action="/ui/profile" class="stack" enctype="multipart/form-data" id="profile-edit-form">
+      <div class="form-row">
+        <label>Фамилия<br><input type="text" name="last_name" maxlength="120" value="{{ user.last_name or '' }}"></label>
+        <label>Имя<br><input type="text" name="first_name" maxlength="120" value="{{ user.first_name or '' }}"></label>
+      </div>
+      <div class="form-row">
+        <label>Отчество<br><input type="text" name="patronymic" maxlength="120" value="{{ user.patronymic or '' }}"></label>
+        <label>Дата рождения<br><input type="date" name="birth_date" value="{% if user.birth_date %}{{ user.birth_date.strftime('%Y-%m-%d') }}{% endif %}"></label>
+      </div>
+      <label>Группа
+        <div class="autocomplete" data-autocomplete="groups" data-placeholder="ИКБО-14-23">
+          <input type="text" name="group_name" maxlength="64" value="{{ user.group_name or '' }}" autocomplete="off">
+          <div class="autocomplete-list"></div>
+        </div>
+      </label>
+      <div class="actions">
+        <button type="submit">Сохранить</button>
+        <button type="button" class="ghost" data-close="modal">Отмена</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal" id="profile-task-modal" aria-hidden="true">
+  <div class="modal-backdrop" data-close="modal"></div>
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3>Новая задача</h3>
+      <button type="button" class="ghost" data-close="modal">×</button>
+    </div>
+    <form method="post" action="/ui/tasks/new" class="stack" id="profile-task-form">
+      <label>Заголовок<br>
+        <input type="text" name="title" required maxlength="500">
+      </label>
+      <label>Описание<br>
+        <textarea name="body" rows="3" placeholder="Необязательно"></textarea>
+      </label>
+      <label class="status-row">
+        <span class="status-label">Статус:</span>
+        <span class="status-indicator" style="color: #ff4d4f;">●</span>
+        <input type="checkbox" name="status_done" value="1">
+        <!-- <label class="checkbox-label">Выполнено</label> -->
+      </label>
+      <label>Дедлайн (локальное время браузера)<br>
+        <input type="datetime-local" name="due_at" id="profile-due-at">
+      </label>
+      <label>Прикрепить к предмету
+        <div class="autocomplete" data-autocomplete="subjects">
+          <input type="text" name="subject" id="profile-subject" maxlength="255" autocomplete="off">
+          <div class="autocomplete-list"></div>
+        </div>
+      </label>
+      <div class="actions">
+        <button type="submit">Создать</button>
+        <button type="button" class="ghost" data-close="modal">Отмена</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal" id="profile-task-edit-modal" aria-hidden="true">
+  <div class="modal-backdrop" data-close="modal"></div>
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3>Редактирование задачи</h3>
+      <button type="button" class="ghost" data-close="modal">×</button>
+    </div>
+    <form method="post" class="stack" id="profile-task-edit-form">
+      <label>Заголовок<br>
+        <input type="text" name="title" required maxlength="500">
+      </label>
+      <label>Описание<br>
+        <textarea name="body" rows="3" placeholder="Необязательно"></textarea>
+      </label>
+      <label class="status-row">
+        <span class="status-label">Статус:</span>
+        <span class="status-indicator" id="task-edit-status-indicator" style="color: #ff4d4f;">●</span>
+        <input type="checkbox" name="status_done" value="1" id="task-edit-status-done">
+        <!-- <label for="task-edit-status-done" class="checkbox-label">Выполнено</label> -->
+      </label>
+      <label>Дедлайн (локальное время браузера)<br>
+        <input type="datetime-local" name="due_at" id="task-edit-due-at">
+      </label>
+      <label>Прикрепить к предмету
+        <div class="autocomplete" data-autocomplete="subjects">
+          <input type="text" name="subject" maxlength="255" autocomplete="off">
+          <div class="autocomplete-list"></div>
+        </div>
+      </label>
+      <div class="actions">
+        <button type="submit">Сохранить</button>
+        <button type="button" class="ghost" data-close="modal">Отмена</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  const GROUPS_API = "http://localhost:5000/api/schedule/groups";
+  const SUBJECTS_API = "http://localhost:5000/api/schedule";
+  const userGroup = "{{ user.group_name or '' }}";
+
+  function normalizeKey(value) {
+    return (value || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9а-яё]+/gi, "");
+  }
+
+  function initAutocomplete(root, source) {
+    const input = root.querySelector("input");
+    const list = root.querySelector(".autocomplete-list");
+    let items = source || [];
+
+    function render(filtered) {
+      list.innerHTML = "";
+      if (!filtered.length) {
+        list.classList.remove("open");
+        return;
+      }
+      filtered.slice(0, 8).forEach((value) => {
+        const option = document.createElement("button");
+        option.type = "button";
+        option.className = "autocomplete-item";
+        option.textContent = value;
+        option.addEventListener("click", () => {
+          input.value = value;
+          list.classList.remove("open");
+        });
+        list.appendChild(option);
+      });
+      list.classList.add("open");
+    }
+
+    function filter() {
+      const query = normalizeKey(input.value);
+      if (!query) {
+        render(items);
+        return;
+      }
+      const filtered = items.filter((value) => normalizeKey(value).includes(query));
+      render(filtered);
+    }
+
+    input.addEventListener("input", filter);
+    input.addEventListener("focus", filter);
+    document.addEventListener("click", (event) => {
+      if (!root.contains(event.target)) {
+        list.classList.remove("open");
+      }
+    });
+  }
+
+  async function loadGroups() {
+    try {
+      const resp = await fetch(GROUPS_API);
+      if (!resp.ok) return [];
+      const data = await resp.json();
+      return Array.isArray(data) ? data : data.groups || [];
+    } catch (err) {
+      return [];
+    }
+  }
+
+  async function loadSubjects() {
+    if (!userGroup) return [];
+    try {
+      const resp = await fetch(`${SUBJECTS_API}/${encodeURIComponent(userGroup)}/full_schedule`);
+      if (!resp.ok) return [];
+      const data = await resp.json();
+      const schedule = data.schedule || {};
+      const names = new Set();
+      Object.values(schedule).forEach((day) => {
+        (day.lessons || []).forEach((slot) => {
+          slot.forEach((lesson) => {
+            if (lesson.name) names.add(lesson.name);
+          });
+        });
+      });
+      return Array.from(names);
+    } catch (err) {
+      return [];
+    }
+  }
+
+  function colorByDeadline(dueAt) {
+    if (!dueAt) return "#c7c7c7";
+    const now = new Date();
+    const due = new Date(dueAt);
+    const diffDays = (due - now) / (1000 * 60 * 60 * 24);
+    if (diffDays <= 3) return "#ff4d4f";
+    if (diffDays <= 7) return "#fadb14";
+    return "#52c41a";
+  }
+
+  document.querySelectorAll('.deadline-card').forEach((card) => {
+    const due = card.dataset.due;
+    const color = colorByDeadline(due);
+    card.style.borderLeftColor = color;
+    card.style.background = `${color}10`;
+  });
+
+  function applyDeadlineColor(input) {
+    if (!input) return;
+    const value = input.value;
+    if (!value) {
+      input.style.borderColor = "";
+      input.style.boxShadow = "";
+      return;
+    }
+    const diffDays = (new Date(value) - new Date()) / (1000 * 60 * 60 * 24);
+    let color = "#52c41a";
+    if (diffDays <= 3) {
+      color = "#ff4d4f";
+    } else if (diffDays <= 7) {
+      color = "#fadb14";
+    }
+    input.style.borderColor = color;
+    input.style.boxShadow = `0 0 0 2px ${color}22`;
+  }
+
+  const editBtn = document.getElementById("profile-edit");
+  const editModal = document.getElementById("profile-edit-modal");
+  const newTaskBtn = document.getElementById("profile-new-task");
+  const taskModal = document.getElementById("profile-task-modal");
+  const avatarInput = document.getElementById("avatar-input");
+  const avatarForm = document.getElementById("profile-avatar-form");
+  const profileDueAt = document.getElementById("profile-due-at");
+
+  function openModal(modal) {
+    if (!modal) return;
+    modal.classList.add("open");
+    modal.setAttribute("aria-hidden", "false");
+  }
+
+  function closeModal(modal) {
+    if (!modal) return;
+    modal.classList.remove("open");
+    modal.setAttribute("aria-hidden", "true");
+  }
+
+  editBtn.addEventListener("click", () => {
+    openModal(editModal);
+    const firstInput = editModal.querySelector('input[name="last_name"]');
+    if (firstInput) firstInput.focus();
+  });
+
+  newTaskBtn.addEventListener("click", () => {
+    openModal(taskModal);
+    const titleInput = taskModal.querySelector('input[name="title"]');
+    if (titleInput) titleInput.focus();
+  });
+
+  document.querySelectorAll('[data-close="modal"]').forEach((btn) => {
+    btn.addEventListener("click", (event) => {
+      const modal = event.target.closest(".modal");
+      closeModal(modal);
+    });
+  });
+
+  if (avatarInput && avatarForm) {
+    avatarInput.addEventListener("change", () => {
+      if (avatarInput.files && avatarInput.files.length) {
+        avatarForm.submit();
+      }
+    });
+  }
+
+  if (profileDueAt) {
+    profileDueAt.addEventListener("input", () => applyDeadlineColor(profileDueAt));
+  }
+
+  document.querySelectorAll(".task-status-checkbox").forEach((checkbox) => {
+    checkbox.addEventListener("change", async () => {
+      const taskId = checkbox.dataset.taskId;
+      if (!taskId) return;
+      const status = checkbox.checked ? "done" : "todo";
+      const card = checkbox.closest(".deadline-card");
+      const indicator = card.querySelector(".status-indicator-card");
+      await fetch(`/api/tasks/${taskId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status }),
+        }
+      );
+      if (indicator) {
+        indicator.style.color = checkbox.checked ? "#52c41a" : "#ff4d4f";
+      }
+    });
+  });
+
+  // Edit task modal
+  const editTaskModal = document.getElementById("profile-task-edit-modal");
+  const editTaskForm = document.getElementById("profile-task-edit-form");
+  let currentEditingTaskId = null;
+
+  document.querySelectorAll(".task-edit-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const taskId = btn.dataset.taskId;
+      const card = btn.closest(".deadline-card");
+      if (!card) return;
+
+      currentEditingTaskId = taskId;
+      const title = card.querySelector(".deadline-title").textContent.trim();
+      const body = card.querySelector(".deadline-body")?.textContent || "";
+      const subject = card.querySelector(".deadline-subject")?.textContent || "";
+      const isDone = card.querySelector(".task-status-checkbox").checked;
+      const dueAtText = card.querySelector(".deadline-meta").textContent;
+      const statusIndicator = card.querySelector(".status-indicator-card");
+      const statusColor = statusIndicator ? statusIndicator.style.color : "#ff4d4f";
+
+      // Fill form
+      editTaskForm.querySelector('input[name="title"]').value = title;
+      editTaskForm.querySelector('textarea[name="body"]').value = body;
+      editTaskForm.querySelector('input[name="subject"]').value = subject;
+      editTaskForm.querySelector('#task-edit-status-done').checked = isDone;
+      document.getElementById("task-edit-status-indicator").style.color = statusColor;
+
+      // Try to parse and set due_at
+      const dueAtInput = document.getElementById("task-edit-due-at");
+      const cardDueAt = card.dataset.due;
+      if (cardDueAt) {
+        const dt = new Date(cardDueAt);
+        dueAtInput.value = dt.toISOString().slice(0, 16);
+      } else {
+        dueAtInput.value = "";
+      }
+
+      // Update form action
+      editTaskForm.action = `/ui/tasks/${taskId}/edit`;
+
+      // Open modal
+      openModal(editTaskModal);
+      editTaskForm.querySelector('input[name="title"]').focus();
+    });
+  });
+
+  // Handle status checkbox change in edit modal
+  document.getElementById("task-edit-status-done").addEventListener("change", function() {
+    const indicator = document.getElementById("task-edit-status-indicator");
+    indicator.style.color = this.checked ? "#52c41a" : "#ff4d4f";
+  });
+
+  loadGroups().then((groups) => {
+    document.querySelectorAll('[data-autocomplete="groups"]').forEach((root) => {
+      initAutocomplete(root, groups);
+    });
+  });
+
+  loadSubjects().then((subjects) => {
+    const subjectRoot = document.querySelector('#profile-task-modal [data-autocomplete="subjects"]');
+    if (subjectRoot) {
+      initAutocomplete(subjectRoot, subjects);
+    }
+  });
+
+  // Сортировка задач
+  const sortSelect = document.getElementById("sort-select");
+  const deadlineList = document.querySelector(".deadline-list");
+
+  function sortTasks(sortType) {
+    if (!deadlineList) return;
+    const cards = Array.from(deadlineList.querySelectorAll(".deadline-card"));
+
+    cards.sort((a, b) => {
+      switch (sortType) {
+        case "subject-asc": {
+          const subjectA = (a.querySelector(".deadline-subject")?.textContent || "").trim();
+          const subjectB = (b.querySelector(".deadline-subject")?.textContent || "").trim();
+          return subjectA.localeCompare(subjectB, "ru");
+        }
+        case "subject-desc": {
+          const subjectA = (a.querySelector(".deadline-subject")?.textContent || "").trim();
+          const subjectB = (b.querySelector(".deadline-subject")?.textContent || "").trim();
+          return subjectB.localeCompare(subjectA, "ru");
+        }
+        case "due-asc": {
+          const dueA = new Date(a.dataset.due || "9999-12-31");
+          const dueB = new Date(b.dataset.due || "9999-12-31");
+          return dueA - dueB;
+        }
+        case "due-desc": {
+          const dueA = new Date(a.dataset.due || "9999-12-31");
+          const dueB = new Date(b.dataset.due || "9999-12-31");
+          return dueB - dueA;
+        }
+        case "status-active": {
+          const statusA = a.dataset.status === "done" ? 1 : 0;
+          const statusB = b.dataset.status === "done" ? 1 : 0;
+          return statusA - statusB;
+        }
+        default:
+          return 0;
+      }
+    });
+
+    deadlineList.innerHTML = "";
+    cards.forEach((card) => deadlineList.appendChild(card));
+  }
+
+  if (sortSelect) {
+    sortSelect.addEventListener("change", (e) => {
+      sortTasks(e.target.value);
+    });
+  }
+
+</script>
+{% endblock %}

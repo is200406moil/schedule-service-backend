@@ -1,0 +1,372 @@
+{% extends "base.html" %}
+{% block title %}Календарь{% endblock %}
+{% block content %}
+<div class="calendar-layout">
+  <section class="calendar-panel">
+    <div class="calendar-header">
+      <div>
+        <div class="calendar-date" id="calendar-date">—</div>
+        <div class="calendar-month">
+          <button class="ghost" id="prev-month">‹</button>
+          <span id="calendar-month">—</span>
+          <button class="ghost" id="next-month">›</button>
+        </div>
+      </div>
+      <div class="calendar-group">
+        <span class="hint">Группа:</span>
+        <strong id="calendar-group">{{ user.group_name or 'не выбрана' }}</strong>
+      </div>
+    </div>
+    <div class="calendar-grid" id="calendar-grid"></div>
+  </section>
+  <section class="day-panel">
+    <div class="day-header">
+      <h2 id="day-title">Выберите день</h2>
+      <div class="day-sub" id="day-sub">Расписание на выбранный день</div>
+    </div>
+    <div id="day-lessons" class="lesson-list"></div>
+  </section>
+</div>
+
+<div class="modal" id="task-modal" aria-hidden="true">
+  <div class="modal-backdrop" data-close="modal"></div>
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3>Новая задача</h3>
+      <button type="button" class="ghost" data-close="modal">×</button>
+    </div>
+    <form method="post" action="/ui/tasks/new" class="stack" id="modal-task-form">
+      <label>Заголовок<br>
+        <input type="text" name="title" required maxlength="500">
+      </label>
+      <label>Описание<br>
+        <textarea name="body" rows="3" placeholder="Необязательно"></textarea>
+      </label>
+      <label class="status-row">
+        <span class="status-label">Статус:</span>
+        <span class="status-indicator" style="color: #ff4d4f;">●</span>
+        <input type="checkbox" name="status_done" value="1">
+        <!-- <label class="checkbox-label">Выполнено</label> -->
+      </label>
+      <label>Дедлайн (локальное время браузера)<br>
+        <input type="datetime-local" name="due_at" id="modal-due-at">
+      </label>
+      <label>Прикрепить к предмету
+        <div class="autocomplete" data-autocomplete="subjects">
+          <input type="text" name="subject" id="modal-subject" maxlength="255" autocomplete="off">
+          <div class="autocomplete-list"></div>
+        </div>
+      </label>
+      <input type="hidden" name="lesson_date" id="modal-lesson-date" value="">
+      <input type="hidden" name="lesson_time" id="modal-lesson-time" value="">
+      <div class="actions">
+        <button type="submit">Создать</button>
+        <button type="button" class="ghost" data-close="modal">Отмена</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  const SCHEDULE_API = "http://localhost:5000/api/schedule";
+  const userGroup = "{{ user.group_name or '' }}";
+  const weekNames = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+  const monthNames = [
+    "янв", "фев", "мар", "апр", "май", "июн",
+    "июл", "авг", "сен", "окт", "ноя", "дек"
+  ];
+
+  const state = {
+    selected: new Date(),
+    view: new Date(),
+    schedule: null,
+  };
+
+  const grid = document.getElementById("calendar-grid");
+  const calendarDate = document.getElementById("calendar-date");
+  const calendarMonth = document.getElementById("calendar-month");
+  const dayTitle = document.getElementById("day-title");
+  const daySub = document.getElementById("day-sub");
+  const dayLessons = document.getElementById("day-lessons");
+
+  function weekNumber(date) {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  }
+
+  function parity(date) {
+    return weekNumber(date) % 2 === 0 ? 2 : 1;
+  }
+
+  function formatDate(date) {
+    return `${String(date.getDate()).padStart(2, "0")}.${String(date.getMonth() + 1).padStart(2, "0")}.${date.getFullYear()}`;
+  }
+
+  function dayKey(date) {
+    const jsDay = date.getDay();
+    return jsDay === 0 ? 7 : jsDay;
+  }
+
+  async function loadSchedule() {
+    if (!userGroup) {
+      state.schedule = null;
+      renderDay();
+      return;
+    }
+    const resp = await fetch(`${SCHEDULE_API}/${encodeURIComponent(userGroup)}/full_schedule`);
+    if (!resp.ok) {
+      state.schedule = null;
+      renderDay();
+      return;
+    }
+    const data = await resp.json();
+    state.schedule = data.schedule || null;
+    renderDay();
+  }
+
+  function lessonsForDate(date) {
+    if (!state.schedule) return [];
+    const key = dayKey(date);
+    const day = state.schedule[String(key)];
+    if (!day || !day.lessons) return [];
+    const weekParity = parity(date);
+    const slots = [];
+    day.lessons.forEach((slot) => {
+      const filtered = slot.filter((lesson) => lesson.weeks.includes(weekParity));
+      filtered.forEach((lesson) => slots.push(lesson));
+    });
+    return slots;
+  }
+
+  function collectSubjects() {
+    if (!state.schedule) return [];
+    const names = new Set();
+    Object.values(state.schedule).forEach((day) => {
+      (day.lessons || []).forEach((slot) => {
+        slot.forEach((lesson) => {
+          if (lesson.name) names.add(lesson.name);
+        });
+      });
+    });
+    return Array.from(names);
+  }
+
+  function renderDay() {
+    const date = state.selected;
+    calendarDate.textContent = formatDate(date);
+    dayTitle.textContent = `${weekNames[date.getDay()]} · ${formatDate(date)}`;
+    daySub.textContent = `Чётность недели: ${parity(date) === 1 ? "нечётная" : "чётная"}`;
+    const lessons = lessonsForDate(date);
+    dayLessons.innerHTML = "";
+    if (!userGroup) {
+      dayLessons.innerHTML = "<p class=\"hint\">Укажите группу в профиле, чтобы видеть расписание.</p>";
+      return;
+    }
+    if (!lessons.length) {
+      dayLessons.innerHTML = "<p class=\"hint\">Нет занятий в этот день.</p>";
+      return;
+    }
+    lessons.forEach((lesson) => {
+      const card = document.createElement("div");
+      card.className = "lesson-card interactive";
+      card.innerHTML = `
+        <div class="lesson-time">${lesson.time_start} - ${lesson.time_end}</div>
+        <div class="lesson-name">${lesson.name}</div>
+        <div class="lesson-meta">
+          <span>${lesson.types}</span>
+          <span>${lesson.rooms.join(", ")}</span>
+        </div>
+      `;
+      card.addEventListener("click", () => {
+        openTaskModal(lesson.name, lesson.time_start);
+      });
+      dayLessons.appendChild(card);
+    });
+  }
+
+  function normalizeKey(value) {
+    return (value || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9а-яё]+/gi, "");
+  }
+
+  function initAutocomplete(root, source) {
+    const input = root.querySelector("input");
+    const list = root.querySelector(".autocomplete-list");
+    const items = source || [];
+
+    function render(filtered) {
+      list.innerHTML = "";
+      if (!filtered.length) {
+        list.classList.remove("open");
+        return;
+      }
+      filtered.slice(0, 8).forEach((value) => {
+        const option = document.createElement("button");
+        option.type = "button";
+        option.className = "autocomplete-item";
+        option.textContent = value;
+        option.addEventListener("click", () => {
+          input.value = value;
+          list.classList.remove("open");
+        });
+        list.appendChild(option);
+      });
+      list.classList.add("open");
+    }
+
+    function filter() {
+      const query = normalizeKey(input.value);
+      if (!query) {
+        render(items);
+        return;
+      }
+      const filtered = items.filter((value) => normalizeKey(value).includes(query));
+      render(filtered);
+    }
+
+    input.addEventListener("input", filter);
+    input.addEventListener("focus", filter);
+    document.addEventListener("click", (event) => {
+      if (!root.contains(event.target)) {
+        list.classList.remove("open");
+      }
+    });
+
+    return { filter };
+  }
+
+  const modal = document.getElementById("task-modal");
+  const modalSubject = document.getElementById("modal-subject");
+  const modalLessonDate = document.getElementById("modal-lesson-date");
+  const modalLessonTime = document.getElementById("modal-lesson-time");
+  const modalDueAt = document.getElementById("modal-due-at");
+  let modalAutocomplete = null;
+
+  function applyDeadlineColor(input) {
+    if (!input) return;
+    const value = input.value;
+    if (!value) {
+      input.style.borderColor = "";
+      input.style.boxShadow = "";
+      return;
+    }
+    const diffDays = (new Date(value) - new Date()) / (1000 * 60 * 60 * 24);
+    let color = "#52c41a";
+    if (diffDays <= 3) {
+      color = "#ff4d4f";
+    } else if (diffDays <= 7) {
+      color = "#fadb14";
+    }
+    input.style.borderColor = color;
+    input.style.boxShadow = `0 0 0 2px ${color}22`;
+  }
+
+  function openTaskModal(subjectName, timeStart) {
+    const date = state.selected;
+    const lessonDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    modalSubject.value = subjectName || "";
+    if (timeStart) {
+      const dateTimeValue = `${lessonDate}T${String(timeStart).slice(0, 5)}`;
+      modalDueAt.value = dateTimeValue;
+      applyDeadlineColor(modalDueAt);
+      modalLessonTime.value = String(timeStart).slice(0, 5);
+    } else {
+      modalLessonTime.value = "";
+    }
+    modalLessonDate.value = lessonDate;
+    modal.classList.add("open");
+    modal.setAttribute("aria-hidden", "false");
+    if (modalAutocomplete) modalAutocomplete.filter();
+    const titleInput = modal.querySelector('input[name="title"]');
+    if (titleInput) {
+      titleInput.focus();
+    }
+  }
+
+  function closeTaskModal() {
+    modal.classList.remove("open");
+    modal.setAttribute("aria-hidden", "true");
+  }
+
+  modal.addEventListener("click", (event) => {
+    if (event.target.matches('[data-close="modal"]')) {
+      closeTaskModal();
+    }
+  });
+
+  if (modalDueAt) {
+    modalDueAt.addEventListener("input", () => applyDeadlineColor(modalDueAt));
+  }
+
+  function renderCalendar() {
+    const view = new Date(state.view.getFullYear(), state.view.getMonth(), 1);
+    calendarMonth.textContent = `${monthNames[view.getMonth()]}, ${view.getFullYear()}`;
+    grid.innerHTML = "";
+    const header = document.createElement("div");
+    header.className = "calendar-row head";
+    ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].forEach((d) => {
+      const cell = document.createElement("div");
+      cell.className = "calendar-cell";
+      cell.textContent = d;
+      header.appendChild(cell);
+    });
+    grid.appendChild(header);
+
+    const firstDay = (view.getDay() + 6) % 7;
+    const daysInMonth = new Date(view.getFullYear(), view.getMonth() + 1, 0).getDate();
+    const prevMonthDays = new Date(view.getFullYear(), view.getMonth(), 0).getDate();
+
+    let dayCounter = 1 - firstDay;
+    for (let row = 0; row < 6; row++) {
+      const rowEl = document.createElement("div");
+      rowEl.className = "calendar-row";
+      for (let col = 0; col < 7; col++) {
+        const cell = document.createElement("button");
+        cell.className = "calendar-cell day";
+        const cellDate = new Date(view.getFullYear(), view.getMonth(), dayCounter);
+        const inMonth = cellDate.getMonth() === view.getMonth();
+        if (!inMonth) cell.classList.add("muted");
+        if (formatDate(cellDate) === formatDate(state.selected)) {
+          cell.classList.add("selected");
+        }
+        const lessonsCount = lessonsForDate(cellDate).length;
+        cell.innerHTML = `
+          <span class="day-number">${cellDate.getDate()}</span>
+          <span class="day-count">${lessonsCount}</span>
+        `;
+        cell.addEventListener("click", () => {
+          state.selected = cellDate;
+          renderCalendar();
+          renderDay();
+        });
+        rowEl.appendChild(cell);
+        dayCounter += 1;
+      }
+      grid.appendChild(rowEl);
+    }
+  }
+
+  document.getElementById("prev-month").addEventListener("click", () => {
+    state.view = new Date(state.view.getFullYear(), state.view.getMonth() - 1, 1);
+    renderCalendar();
+  });
+  document.getElementById("next-month").addEventListener("click", () => {
+    state.view = new Date(state.view.getFullYear(), state.view.getMonth() + 1, 1);
+    renderCalendar();
+  });
+
+  loadSchedule().then(() => {
+    const subjects = collectSubjects();
+    const root = modal.querySelector('[data-autocomplete="subjects"]');
+    if (root) {
+      modalAutocomplete = initAutocomplete(root, subjects);
+    }
+    renderCalendar();
+    renderDay();
+  });
+</script>
+{% endblock %}

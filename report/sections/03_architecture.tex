@@ -1,0 +1,75 @@
+\section{Разработка архитектуры веб-приложения на основе Clean Architecture}
+
+Архитектура проекта построена на принципах Clean Architecture, что позволяет разделить ответственность между слоями, минимизировать связанность и обеспечить расширяемость. В системе выделены два независимых сервиса: основной модуль задач (PostgreSQL) и модуль расписания (MongoDB). Каждый сервис имеет собственный слой API и внутренние компоненты.
+
+\subsection{Слои приложения и их назначение}
+
+Основное приложение (\texttt{app/}) разделено на следующие логические уровни:
+\begin{enumerate}
+    \item \textbf{Domain (сущности)} --- ORM-модели \texttt{User} и \texttt{Task}, определяющие структуру данных.
+    \item \textbf{Application (бизнес-логика)} --- сервисы, реализующие правила обработки данных (\texttt{app/services/task\_service.py}).
+    \item \textbf{Infrastructure (инфраструктура)} --- слой БД и конфигурации (\texttt{app/core}, \texttt{app/repositories}, \texttt{alembic}).
+    \item \textbf{Presentation (представление)} --- FastAPI-роутеры и Jinja2-шаблоны (\texttt{app/routers}, \texttt{app/templates}).
+\end{enumerate}
+
+\subsection{Основные модули и зависимости}
+
+Связи между слоями организованы по принципу зависимости внутрь:
+\begin{itemize}
+    \item \texttt{models/} описывает структуры БД и не зависит от API;
+    \item \texttt{schemas/} описывает входные и выходные DTO для API и веб-форм;
+    \item \texttt{repositories/} реализует CRUD-операции на уровне БД;
+    \item \texttt{services/} агрегирует бизнес-логику и взаимодействует с репозиториями;
+    \item \texttt{routers/} принимает HTTP-запросы и передает их в сервисы;
+    \item \texttt{templates/} формируют HTML-страницы (SSR).
+\end{itemize}
+
+\subsection{Описание маршрута обработки запроса}
+
+Типовой поток для API задач:
+\begin{enumerate}
+    \item Пользователь выполняет запрос к эндпоинту (например, \texttt{POST /tasks}).
+    \item FastAPI роутер валидирует данные через Pydantic-схему \texttt{TaskCreate}.
+    \item Сервис \texttt{task\_service.create\_task} формирует доменную сущность и вызывает репозиторий.
+    \item Репозиторий \texttt{task\_repository.create} выполняет INSERT в PostgreSQL.
+    \item Результат возвращается обратно в роутер и сериализуется в JSON.
+\end{enumerate}
+
+Для веб-интерфейса поток аналогичен, но результатом становится HTML-страница, отрендеренная Jinja2.
+
+\subsection{Архитектура интеграции с сервисом расписания}
+
+Сервис \texttt{rtu-mirea-schedule} развёрнут отдельно и предоставляет REST API (\texttt{/api/schedule/...}). Основной модуль использует эти данные на клиентской стороне (JS) для автодополнения предметов и отображения расписания. Это позволяет избежать прямой зависимости основного сервиса от MongoDB и внешних парсеров.
+
+\subsection{Структура папок проекта}
+
+Ниже приведена структура каталогов и назначение основных папок проекта (сокращённо, без служебных файлов):
+
+\begin{verbatim}
+курсач бекенд/
+├── app/                      # основной FastAPI-сервис
+│   ├── core/                 # конфигурация, БД, безопасность
+│   ├── models/               # ORM-модели SQLAlchemy
+│   ├── schemas/              # Pydantic-схемы (DTO)
+│   ├── repositories/         # доступ к данным
+│   ├── services/             # бизнес-логика
+│   ├── routers/              # API и web-роуты
+│   ├── templates/            # Jinja2-шаблоны
+│   └── static/               # CSS и статические файлы
+├── alembic/                  # миграции базы данных
+│   └── versions/             # версии схемы БД
+├── rtu-mirea-schedule/       # отдельный сервис расписания МИРЭА
+│   ├── app/                  # FastAPI-сервис расписания
+│   │   ├── api/              # API-эндпоинты
+│   │   ├── core/             # конфигурация
+│   │   ├── crud/             # операции MongoDB
+│   │   ├── database/         # подключение к MongoDB
+│   │   ├── models/           # Pydantic-модели расписания
+│   │   └── schedule_parser/  # парсер расписания МИРЭА
+│   └── docs/                 # документация сервиса
+├── report/                   # LaTeX-отчёт по ГОСТ
+│   ├── sections/             # разделы отчёта
+│   └── bib/                  # библиография
+├── docker-compose.yml        # PostgreSQL для локальной разработки
+└── requirements.txt          # зависимости Python
+\end{verbatim}

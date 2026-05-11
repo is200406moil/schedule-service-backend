@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Вход{% endblock %}
+{% block content %}
+<h1>Вход</h1>
+{% if ok == "registered" %}
+<p class="ok">Регистрация прошла успешно. Войдите с теми же данными.</p>
+{% endif %}
+{% if error == "auth" %}
+<p class="err">Неверный email или пароль.</p>
+{% elif error == "inactive" %}
+<p class="err">Учётная запись отключена.</p>
+{% endif %}
+<form method="post" action="/ui/login" class="stack">
+  <label>Email<br><input type="email" name="email" required autocomplete="username"></label>
+  <label>Пароль<br><input type="password" name="password" required autocomplete="current-password"></label>
+  <button type="submit">Войти</button>
+</form>
+<p class="hint">Нет аккаунта? <a href="/ui/register">Регистрация</a></p>
+{% endblock %}

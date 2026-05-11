@@ -1,0 +1,64 @@
+\section{Реализация слоя серверной логики и базы данных}
+
+Серверная часть приложения реализует управление пользователями, задачами, профилем, а также обеспечивает доступ к расписанию через внешнюю API. В основе лежат ORM-модели SQLAlchemy и слой сервисов, обеспечивающих бизнес-правила.
+
+\subsection{Схема базы данных и модели}
+
+В PostgreSQL реализованы две ключевые сущности: \texttt{users} и \texttt{tasks}.
+
+\textbf{Модель User}:
+\begin{itemize}
+    \item обязательные поля: \texttt{id}, \texttt{email} (уникальный), \texttt{password\_hash}, \texttt{is\_active};
+    \item профиль: \texttt{first\_name}, \texttt{last\_name}, \texttt{patronymic}, \texttt{birth\_date};
+    \item связь с расписанием: \texttt{group\_name};
+    \item аватар: \texttt{avatar\_base64} (строка с data:image/...).
+\end{itemize}
+
+\textbf{Модель Task}:
+\begin{itemize}
+    \item \texttt{id}, \texttt{user\_id} (FK на \texttt{users.id});
+    \item \texttt{title}, \texttt{body}, \texttt{status} (значения \texttt{todo} или \texttt{done});
+    \item \texttt{due\_at} (время дедлайна, timezone-aware);
+    \item \texttt{subject} (привязка к дисциплине);
+    \item \texttt{created\_at}, \texttt{updated\_at} (timestamp с \texttt{func.now()}).
+\end{itemize}
+
+Связь \texttt{User}--\texttt{Task} реализована как «один-ко-многим» с каскадным удалением задач при удалении пользователя.
+
+\subsection{Репозитории и сервисы}
+
+Слой репозиториев реализует доступ к данным:
+\begin{itemize}
+    \item \texttt{user\_repository.get\_by\_id}, \texttt{get\_by\_email}, \texttt{create}, \texttt{update};
+    \item \texttt{task\_repository.list\_for\_user}, \texttt{get\_for\_user}, \texttt{create}, \texttt{update}, \texttt{delete}.
+\end{itemize}
+
+Бизнес-логика описана в \texttt{task\_service}: проверки доступа, обработка отсутствующих задач, CRUD-операции для конкретного пользователя.
+
+\subsection{Аутентификация и безопасность}
+
+Безопасность реализована через JWT и хэширование паролей:
+\begin{itemize}
+    \item токены создаются функцией \texttt{create\_access\_token} (HS256, поле \texttt{sub}, срок действия в минутах);
+    \item пароли хэшируются через \texttt{pwdlib.PasswordHash.recommended()} (argon2/secure defaults);
+    \item токен может передаваться через \texttt{Authorization: Bearer} или cookie \texttt{access\_token};
+    \item зависимость \texttt{get\_current\_user} проверяет подпись токена и активность пользователя.
+\end{itemize}
+
+\subsection{Миграции и версия схемы}
+
+Изменения БД фиксируются через Alembic:
+\begin{itemize}
+    \item \texttt{0001\_initial} --- создание таблиц users/tasks;
+    \item \texttt{0002\_extend} --- добавление полей профиля и \texttt{subject};
+    \item \texttt{0003\_remove\_task\_color\_source} --- удаление лишних полей (color, schedule\_source).
+\end{itemize}
+
+\subsection{Интеграция с расписанием}
+
+Получение расписания выполняется через отдельный сервис \texttt{rtu-mirea-schedule}:
+\begin{itemize}
+    \item список групп запрашивается по \texttt{/api/schedule/groups};
+    \item полное расписание для группы --- \texttt{/api/schedule/{group}/full\_schedule};
+    \item данные используются на фронтенде для автодополнения предметов и построения календаря.
+\end{itemize}

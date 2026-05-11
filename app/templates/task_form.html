@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block title %}{{ heading }}{% endblock %}
+{% block content %}
+<h1>{{ heading }}</h1>
+<form method="post" class="stack" id="task-form"
+  {% if task %}
+  action="/ui/tasks/{{ task.id }}/edit"
+  {% else %}
+  action="/ui/tasks/new"
+  {% endif %}
+>
+  <label>Заголовок<br>
+    <input type="text" name="title" required maxlength="500"
+      value="{{ task.title if task else '' }}">
+  </label>
+  <label>Описание<br>
+    <textarea name="body" rows="4" placeholder="Необязательно">{{ task.body if task and task.body else '' }}</textarea>
+  </label>
+  <label class="status-row">
+    <span class="status-label">Статус:</span>
+    <span class="status-indicator" id="status-indicator">●</span>
+    <input type="checkbox" name="status_done" id="status_done" value="1" {% if task and task.status == 'done' %}checked{% endif %}>
+    <!-- <label for="status_done" class="checkbox-label">Выполнено</label> -->
+  </label>
+  <label>Дедлайн (локальное время браузера)<br>
+    <input type="datetime-local" name="due_at" id="due-at"
+      value="{% if task and task.due_at %}{{ task.due_at.strftime('%Y-%m-%dT%H:%M') }}{% endif %}">
+  </label>
+  <label>Прикрепить к предмету
+    <div class="autocomplete" data-autocomplete="subjects" data-placeholder="Выберите предмет">
+      <input type="text" name="subject" maxlength="255" value="{{ task.subject if task else '' }}" autocomplete="off">
+      <div class="autocomplete-list"></div>
+    </div>
+  </label>
+  <input type="hidden" name="lesson_date" id="lesson-date" value="">
+  {% if task %}
+  <label class="check">
+    <input type="checkbox" name="clear_due_at" value="1"> Сбросить дедлайн
+  </label>
+  {% endif %}
+  <div class="actions">
+    <button type="submit">Сохранить</button>
+    <a href="/ui/tasks">Отмена</a>
+  </div>
+</form>
+
+<script>
+  const SUBJECTS_API = "http://localhost:5000/api/schedule";
+  const userGroup = "{{ user.group_name or '' }}";
+
+  function normalizeKey(value) {
+    return (value || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9а-яё]+/gi, "");
+  }
+
+  function initAutocomplete(root, source) {
+    const input = root.querySelector("input");
+    const list = root.querySelector(".autocomplete-list");
+    let items = source || [];
+
+    function render(filtered) {
+      list.innerHTML = "";
+      if (!filtered.length) {
+        list.classList.remove("open");
+        return;
+      }
+      filtered.slice(0, 8).forEach((value) => {
+        const option = document.createElement("button");
+        option.type = "button";
+        option.className = "autocomplete-item";
+        option.textContent = value;
+        option.addEventListener("click", () => {
+          input.value = value;
+          list.classList.remove("open");
+        });
+        list.appendChild(option);
+      });
+      list.classList.add("open");
+    }
+
+    function filter() {
+      const query = normalizeKey(input.value);
+      if (!query) {
+        render(items);
+        return;
+      }
+      const filtered = items.filter((value) => normalizeKey(value).includes(query));
+      render(filtered);
+    }
+
+    input.addEventListener("input", filter);
+    input.addEventListener("focus", filter);
+    document.addEventListener("click", (event) => {
+      if (!root.contains(event.target)) {
+        list.classList.remove("open");
+      }
+    });
+  }
+
+  async function loadSubjects() {
+    if (!userGroup) return [];
+    try {
+      const resp = await fetch(`${SUBJECTS_API}/${encodeURIComponent(userGroup)}/full_schedule`);
+      if (!resp.ok) return [];
+      const data = await resp.json();
+      const schedule = data.schedule || {};
+      const names = new Set();
+      Object.values(schedule).forEach((day) => {
+        (day.lessons || []).forEach((slot) => {
+          slot.forEach((lesson) => {
+            if (lesson.name) names.add(lesson.name);
+          });
+        });
+      });
+      return Array.from(names);
+    } catch (err) {
+      return [];
+    }
+  }
+
+  function applyDeadlineColor() {
+    const input = document.getElementById("due-at");
+    if (!input) return;
+    const value = input.value;
+    if (!value) {
+      input.style.borderColor = "";
+      return;
+    }
+    const due = new Date(value);
+    const diffDays = (due - new Date()) / (1000 * 60 * 60 * 24);
+    let color = "#52c41a";
+    if (diffDays <= 3) {
+      color = "#ff4d4f";
+    } else if (diffDays <= 7) {
+      color = "#fadb14";
+    }
+    input.style.borderColor = color;
+    input.style.boxShadow = `0 0 0 2px ${color}22`;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const subjectPrefill = params.get("subject");
+  const lessonDatePrefill = params.get("lesson_date");
+  if (subjectPrefill) {
+    const subjectInput = document.querySelector('[name="subject"]');
+    if (subjectInput) subjectInput.value = subjectPrefill;
+  }
+  if (lessonDatePrefill) {
+    const hidden = document.getElementById("lesson-date");
+    if (hidden) hidden.value = lessonDatePrefill;
+  }
+
+  loadSubjects().then((subjects) => {
+    document.querySelectorAll('[data-autocomplete="subjects"]').forEach((root) => {
+      initAutocomplete(root, subjects);
+    });
+  });
+
+  const dueInput = document.getElementById("due-at");
+  if (dueInput) {
+    dueInput.addEventListener("input", applyDeadlineColor);
+    applyDeadlineColor();
+  }
+
+  const statusCheckbox = document.getElementById("status_done");
+  const statusIndicator = document.getElementById("status-indicator");
+  if (statusCheckbox && statusIndicator) {
+    function updateStatusIndicator() {
+      if (statusCheckbox.checked) {
+        statusIndicator.style.color = "#52c41a";
+      } else {
+        statusIndicator.style.color = "#ff4d4f";
+      }
+    }
+    statusCheckbox.addEventListener("change", updateStatusIndicator);
+    updateStatusIndicator();
+  }
+</script>
+{% endblock %}

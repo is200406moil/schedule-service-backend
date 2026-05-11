@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Мои задачи{% endblock %}
+{% block content %}
+<h1>Мои задачи</h1>
+<p><a class="btn" href="/ui/tasks/new">Новая задача</a></p>
+{% if not tasks %}
+<p class="hint">Пока нет задач — создайте первую.</p>
+{% else %}
+<div class="tasks-grid">
+  {% for t in tasks %}
+  <div class="task-card">
+    <div class="task-row">
+      <div class="task-content">
+        <div class="task-title"><a href="/ui/tasks/{{ t.id }}/edit">{{ t.title }}</a></div>
+        <div class="task-meta">
+          {% if t.due_at %}
+          <span class="task-date">📅 {{ t.due_at.strftime('%Y-%m-%d %H:%M') }}</span>
+          {% endif %}
+          {% if t.subject %}
+          <span class="task-subject">📚 {{ t.subject }}</span>
+          {% endif %}
+        </div>
+        {% if t.body %}
+        <div class="task-body">{{ t.body }}</div>
+        {% endif %}
+      </div>
+      <div class="task-actions">
+        <span class="status-indicator-card" {% if t.status == 'done' %}style="color: #52c41a;"{% else %}style="color: #ff4d4f;"{% endif %}>●</span>
+        <a href="/ui/tasks/{{ t.id }}/edit" class="icon-btn" title="Редактировать">✏️</a>
+        <form class="inline" action="/ui/tasks/{{ t.id }}/delete" method="post" onsubmit="return confirm('Удалить задачу?');">
+          <button type="submit" class="icon-btn danger" title="Удалить">🗑️</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

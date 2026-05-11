@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Задачи студента{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css?v=2">
+</head>
+<body>
+  <header class="top">
+    <nav>
+      <a href="/ui/calendar" class="nav-calendar">Календарь</a>
+      {% if user %}
+      <button type="button" class="avatar-btn" id="profile-avatar-btn" title="Профиль">
+        {% if user.avatar_base64 %}
+        <img src="{{ user.avatar_base64 }}" alt="Аватар" class="avatar-small">
+        {% else %}
+        <span class="avatar-icon">👤</span>
+        {% endif %}
+      </button>
+      {% else %}
+      <a href="/ui/login">Вход</a>
+      <a href="/ui/register">Регистрация</a>
+      {% endif %}
+    </nav>
+  </header>
+  <script>
+    const avatarBtn = document.getElementById('profile-avatar-btn');
+    if (avatarBtn) {
+      avatarBtn.addEventListener('click', () => {
+        window.location.href = '/ui/profile';
+      });
+    }
+  </script>
+  <main class="wrap">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="footer" id="footer">
+    <div class="footer-inner">
+      <div>
+        <div class="footer-title">Гиёсидинов И. И.</div>
+        <div class="footer-sub">Москва, 2026</div>
+      </div>
+      <div class="footer-links">
+        <a class="footer-link" href="https://t.me/zema_offf" target="_blank" rel="noopener">
+          <span class="tg-icon">✈</span> Telegram
+        </a>
+        <a class="footer-link" href="/docs">API - Управление задачами</a>
+        <a class="footer-link" href="http://localhost:5000/docs">API - Расписание РТУ МИРЭА</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
