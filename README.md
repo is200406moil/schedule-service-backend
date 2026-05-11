@@ -22,16 +22,12 @@ pip install -r requirements.txt
 
 В корне репозитория есть `docker-compose.yml`: одной командой поднимаются:
 - основной сайт (FastAPI) на `http://localhost:8000`
-- сервис расписания RTU MIREA на `http://localhost:5000`
-- PostgreSQL и MongoDB как зависимости
+- PostgreSQL на хост-порту `15432`
 
 Параметры БД: пользователь `user`, пароль `password`, БД `student_tasks`, на хосте порт **15432** → контейнер **5432** (как в `.env.example`; на Windows часто уже заняты 5432/5433 системным PostgreSQL).
 
 ```bash
-docker compose up -d
-cd rtu-mirea-schedule
-docker compose up -d
-cd ..
+docker compose up -d --build
 ```
 
 С пересборкой образов (рекомендуется после изменений в коде):
@@ -40,19 +36,13 @@ cd ..
 docker compose up -d --build
 ```
 
-Важно: контейнер `rtu-mirea-schedule` должен быть запущен. Проверка:
+Важно: при старте контейнер `app` автоматически применяет миграции через `alembic upgrade head`. Проверка:
 
 ```bash
-docker compose ps rtu-mirea-schedule
+docker compose ps
 ```
 
-Если вы запускаете основной FastAPI локально (не в Docker), поднимите минимум сервис расписания и MongoDB:
-
-```bash
-docker compose up -d mongodb rtu-mirea-schedule
-```
-
-Дождитесь статуса `healthy` (`docker compose ps`). В **`.env`** можно оставить строку из **`.env.example`** без изменений (только для локальной разработки; в проде пароли меняйте).
+Дождитесь статуса `healthy` (`docker compose ps`). В **`.env`** можно оставить строку из **`.env.example`** без изменений для локальной разработки; в контейнере значение `DATABASE_URL` переопределяется на внутренний адрес `db:5432`.
 
 Остановка: `docker compose down` (данные в volume `student_tasks_pgdata` сохраняются). Удалить данные: `docker compose down -v`.
 

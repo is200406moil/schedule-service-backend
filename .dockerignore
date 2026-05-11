@@ -1,0 +1,14 @@
+.git
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.mypy_cache
+.ruff_cache
+report/build
+report/out
+rtu-mirea-schedule/.git
+rtu-mirea-schedule/.venv
+rtu-mirea-schedule/__pycache__

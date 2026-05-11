@@ -1,7 +1,25 @@
-# Локальный PostgreSQL для разработки (совпадает с шаблоном .env.example).
 name: student-tasks-backend
 
 services:
+  app:
+    build:
+      context: .
+    container_name: student_tasks_app
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://user:password@db:5432/student_tasks
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-development}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
+    ports:
+      - "8000:8000"
+    command: >-
+      sh -c "alembic upgrade head &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
   db:
     image: postgres:16-alpine
     container_name: student_tasks_db
@@ -9,7 +27,6 @@ services:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
       POSTGRES_DB: student_tasks
-    # Порт на хосте выше 10000 — реже занят вторым экземпляром PostgreSQL (у вас были 5432 и 5433).
     ports:
       - "15432:5432"
     volumes:
