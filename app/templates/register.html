@@ -28,7 +28,7 @@
 <p class="hint">Уже есть аккаунт? <a href="/ui/login">Вход</a></p>
 
 <script>
-  const GROUPS_API = "http://localhost:5000/api/schedule/groups";
+  const GROUPS_API = "http://${domain}:5000/api/schedule/groups";
 
   function normalizeKey(value) {
     return (value || "")
