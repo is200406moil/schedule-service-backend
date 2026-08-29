@@ -7,10 +7,18 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
 *.egg-info/
 dist/
 build/
 rtu-mirea-schedule/
+
+# Local editor and AI-assistant settings
+.cursor/
+.idea/
+.vscode/
 
 # LaTeX / отчёт
 report/build/

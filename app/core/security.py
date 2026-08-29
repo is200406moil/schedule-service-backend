@@ -1,7 +1,6 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from jose import JWTError, jwt
-# from passlib.context import CryptContext
 from pwdlib import PasswordHash
 
 # pwd_context = PasswordHash.from_string("argon2")
@@ -18,7 +17,7 @@ def verify_password(plain_password: str, password_hash: str) -> bool:
 
 
 def create_access_token(*, subject: str, secret_key: str, expires_minutes: int) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(minutes=expires_minutes)
+    expire = datetime.now(UTC) + timedelta(minutes=expires_minutes)
     payload = {"sub": subject, "exp": expire}
     return jwt.encode(payload, secret_key, algorithm=ALGORITHM)
 

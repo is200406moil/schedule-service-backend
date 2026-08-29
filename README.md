@@ -1,94 +1,98 @@
-# Веб-сервис задач и дедлайнов (бэкенд)
+# Student Tasks API
 
-Monorepo: приложение (`app/`) и отчёт (`report/`) логически разделены.
+Учебный веб-сервис для управления задачами и дедлайнами. Пользователь может зарегистрироваться, войти в систему и работать только со своими задачами через REST API или простой серверный интерфейс.
 
-## Структура
+Проект сделан как курсовая работа по программной инженерии. Основной акцент — разделение HTTP-слоя, бизнес-логики и доступа к данным, миграции схемы БД и воспроизводимый запуск.
 
-- `app/` — FastAPI, Clean Architecture слои
-- `alembic/` — миграции БД (`alembic upgrade head`)
-- `report/` — LaTeX по ГОСТ 7.32 (шаблон подключается отдельно)
+## Что реализовано
 
-## Запуск приложения (после установки зависимостей)
+- регистрация и вход по email;
+- JWT-аутентификация через Bearer-токен или `HttpOnly` cookie;
+- создание, просмотр, изменение и удаление задач;
+- дедлайны, предметы и статусы задач;
+- изоляция данных: запросы к задачам всегда ограничены текущим пользователем;
+- миграции PostgreSQL через Alembic;
+- Swagger UI и небольшой интерфейс на Jinja2;
+- healthcheck для контейнера приложения.
+
+## Стек
+
+- Python 3.12, FastAPI, Pydantic;
+- SQLAlchemy 2, PostgreSQL, Alembic;
+- JWT, Argon2;
+- Jinja2;
+- Docker Compose;
+- Pytest, Ruff.
+
+## Как устроен проект
+
+```text
+app/
+├── routers/       # HTTP API и веб-маршруты
+├── services/      # правила работы с задачами
+├── repositories/  # запросы к базе данных
+├── models/        # SQLAlchemy-модели
+├── schemas/       # входные и выходные модели API
+├── core/          # конфигурация, БД и аутентификация
+├── templates/     # серверные HTML-шаблоны
+└── static/
+alembic/           # миграции PostgreSQL
+tests/             # проверки API и изоляции данных
+```
+
+Подробности о границах слоёв и принятых решениях: [docs/architecture.md](docs/architecture.md).
+
+## Запуск через Docker Compose
+
+Нужен Docker с поддержкой `docker compose`.
+
+```bash
+docker compose up --build
+```
+
+После запуска:
+
+- веб-интерфейс: <http://localhost:8000/ui>;
+- Swagger UI: <http://localhost:8000/docs>;
+- healthcheck: <http://localhost:8000/health>.
+
+При старте приложение ждёт готовности PostgreSQL и применяет миграции Alembic. Данные БД сохраняются в Docker volume.
+
+Остановить сервис:
+
+```bash
+docker compose down
+```
+
+Переменные из `.env` необязательны для локального запуска. Чтобы заменить тестовый JWT-секрет или время жизни токена, скопируйте `.env.example` в `.env` и задайте свои значения.
+
+## Локальный запуск
 
 ```bash
 python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
 ```
 
-**PostgreSQL:** сервер должен быть запущен, в строке подключения — **реальные** имя БД, пользователь и пароль.
+Windows PowerShell:
 
-### Вариант A: Docker (если PostgreSQL «в докере», а не установлен в системе)
-
-В корне репозитория есть `docker-compose.yml`: одной командой поднимаются:
-- основной сайт (FastAPI) на `http://localhost:8000`
-- PostgreSQL на хост-порту `15432`
-
-Параметры БД: пользователь `user`, пароль `password`, БД `student_tasks`, на хосте порт **15432** → контейнер **5432** (как в `.env.example`; на Windows часто уже заняты 5432/5433 системным PostgreSQL).
-
-```bash
-docker compose up -d --build
-```
-
-С пересборкой образов (рекомендуется после изменений в коде):
-
-```bash
-docker compose up -d --build
-```
-
-Важно: при старте контейнер `app` автоматически применяет миграции через `alembic upgrade head`. Проверка:
-
-```bash
-docker compose ps
-```
-
-Дождитесь статуса `healthy` (`docker compose ps`). В **`.env`** можно оставить строку из **`.env.example`** без изменений для локальной разработки; в контейнере значение `DATABASE_URL` переопределяется на внутренний адрес `db:5432`.
-
-Остановка: `docker compose down` (данные в volume `student_tasks_pgdata` сохраняются). Удалить данные: `docker compose down -v`.
-
-После смены порта в `docker-compose.yml` выполните **`docker compose up -d`** ещё раз (пересоздаст проброс). В **`.env`** в `DATABASE_URL` должен быть **тот же порт**, что слева в `ports:` (сейчас **15432**).
-
-### Вариант B: свой PostgreSQL
-
-1. Скопируйте `.env.example` в **`.env`** и отредактируйте `DATABASE_URL`, например:  
-   `postgresql+psycopg://логин:пароль@localhost:15432/student_tasks` (или ваш порт из `docker-compose.yml`)
-2. Создайте БД и пользователя в PostgreSQL (если ещё нет), права на схему `public` — по вашей политике.
-3. Примените миграции (после того как БД доступна):
-
-```bash
+```powershell
+.venv\Scripts\Activate.ps1
+pip install -r requirements-dev.txt
+Copy-Item .env.example .env
 alembic upgrade head
-```
-
-4. Запуск:
-
-```bash
 uvicorn app.main:app --reload
 ```
 
-Если `alembic upgrade` падает с **connection refused** или **password authentication failed** — не запущен PostgreSQL или неверный `DATABASE_URL` в `.env`.
+Для локального запуска PostgreSQL должен быть доступен по адресу из `DATABASE_URL`.
 
-Минимальный интерфейс на Jinja2: **`/ui`** (вход и задачи). Тот же JWT можно передать в заголовке `Authorization: Bearer …` или получить в cookie после входа через форму.
-
-## Проверка API (Swagger, Bearer, cookie) — шаг 1 после запуска
-
-Один и тот же JWT читает зависимость `get_current_user`: сначала заголовок **`Authorization: Bearer`**, иначе cookie **`access_token`** (см. `app/core/deps.py`).
-
-1. **Bearer в `/docs`:** выполните `POST /auth/login` с телом JSON `{"email":"…","password":"…"}`, скопируйте `access_token`, нажмите **Authorize**, введите `Bearer <токен>` (или только токен — зависит от версии UI). Затем `GET /auth/me` и `GET/POST/... /tasks` должны отвечать **200** для своего пользователя.
-2. **Только cookie:** войдите через **`/ui`** в том же браузере и том же origin (`http://127.0.0.1:8000`). Запросы к API с этой же вкладки/сайта, которые отправляют cookie (например свой скрипт или `curl -b` с сохранённым `Set-Cookie`), получат **`GET /auth/me`** без заголовка `Authorization`.  
-   **Важно:** встроенный **Try it out** в Swagger иногда **не прикрепляет** cookie к запросу; для надёжной проверки в UI используйте шаг 1 (Bearer). Проверка «только cookie» удобна через `curl`/Postman или отдельный минимальный HTML/скрипт на том же хосте.
-
-Пример с `curl` (после `POST /auth/login` подставьте токен вручную):
+## Проверки
 
 ```bash
-curl -s http://127.0.0.1:8000/auth/me -H "Authorization: Bearer ВАШ_ТОКЕН"
+ruff check .
+pytest
 ```
 
-Пример с cookie (подставьте значение cookie `access_token` после входа через `/ui`):
+Тесты используют отдельную SQLite-базу в памяти и не требуют запущенного PostgreSQL.
 
-```bash
-curl -s http://127.0.0.1:8000/auth/me -H "Cookie: access_token=ВАШ_ТОКЕН"
-```
+## Ограничения
 
-## Сборка PDF отчёта
-
-В каталоге `report/` используйте свой способ сборки (например `latexmk` или скрипт из шаблона [latex-g7-32](https://github.com/latex-g7-32/latex-g7-32)). Артефакты сборки не коммитить (см. `.gitignore`).
+Это учебный, а не production-сервис. Сейчас в нём нет восстановления пароля, отзыва JWT, фоновых уведомлений и полноценной защиты HTML-форм от CSRF. Эти ограничения не мешают основным сценариям, но их нужно учитывать перед реальным развёртыванием.

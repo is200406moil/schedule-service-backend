@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy import Boolean, Date, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+
+if TYPE_CHECKING:
+    from app.models.task import Task
 
 
 class User(Base):
@@ -20,7 +25,7 @@ class User(Base):
     group_name: Mapped[str | None] = mapped_column(String(64), nullable=True)
     avatar_base64: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    tasks: Mapped[list["Task"]] = relationship(
+    tasks: Mapped[list[Task]] = relationship(
         "Task",
         back_populates="owner",
         cascade="all, delete-orphan",

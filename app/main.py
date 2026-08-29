@@ -21,6 +21,13 @@ app.include_router(tasks.router, prefix="/tasks", tags=["tasks"])
 app.include_router(web.router)
 
 
+@app.get("/health", tags=["system"])
+def healthcheck() -> dict[str, str]:
+    """Return a lightweight process health check."""
+
+    return {"status": "ok"}
+
+
 @app.get("/", include_in_schema=False)
 def root_redirect() -> RedirectResponse:
     return RedirectResponse(url="/ui")

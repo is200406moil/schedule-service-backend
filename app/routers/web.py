@@ -1,16 +1,15 @@
 from __future__ import annotations
 
+import base64
 from datetime import datetime
 from pathlib import Path
 from typing import Literal
 
-import base64
-
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
-from starlette.status import HTTP_303_SEE_OTHER
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
+from starlette.status import HTTP_303_SEE_OTHER
 
 from app.core.config import settings
 from app.core.deps import (
@@ -22,7 +21,6 @@ from app.core.security import create_access_token, hash_password, verify_passwor
 from app.models import User
 from app.repositories import task_repository, user_repository
 from app.schemas.task import TaskCreate, TaskUpdate
-from app.schemas.user import UserUpdate
 from app.services import task_service
 
 router = APIRouter(prefix="/ui", tags=["web"])

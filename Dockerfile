@@ -5,10 +5,6 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
 COPY requirements.txt ./
 
 RUN pip install --no-cache-dir --upgrade pip \
@@ -19,7 +15,8 @@ COPY alembic.ini ./alembic.ini
 COPY app ./app
 COPY prestart.sh ./
 
-RUN chmod +x ./prestart.sh
+RUN sed -i 's/\r$//' ./prestart.sh \
+    && chmod +x ./prestart.sh
 
 EXPOSE 8000
 
