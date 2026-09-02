@@ -63,3 +63,13 @@ def test_user_cannot_read_another_users_task(client: TestClient) -> None:
     response = client.get(f"/tasks/{task_id}", headers=stranger_headers)
 
     assert response.status_code == 404
+
+
+def test_calendar_renders_with_configured_schedule_url(client: TestClient) -> None:
+    headers = register_and_login(client, "calendar@example.com")
+
+    response = client.get("/ui/calendar", headers=headers)
+
+    assert response.status_code == 200
+    assert '"http://localhost:5000/api/schedule"' in response.text
+    assert "http://:5000" not in response.text

@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Мои задачи{% endblock %}
 {% block content %}
-<h1>Мои задачи</h1>
+<h1>{% if task_filter == 'active' %}Активные задачи{% elif task_filter == 'overdue' %}Просроченные задачи{% else %}Мои задачи{% endif %}</h1>
 <p><a class="btn" href="/ui/tasks/new">Новая задача</a></p>
 {% if not tasks %}
-<p class="hint">Пока нет задач — создайте первую.</p>
+<p class="hint">{% if task_filter == 'overdue' %}Просроченных задач нет.{% elif task_filter == 'active' %}Активных задач пока нет.{% else %}Пока нет задач — создайте первую.{% endif %}</p>
 {% else %}
 <div class="tasks-grid">
   {% for t in tasks %}

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import base64
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Literal
 
@@ -27,6 +27,10 @@ router = APIRouter(prefix="/ui", tags=["web"])
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+templates.env.globals.update(
+    schedule_api_base_url=settings.schedule_api_base_url.rstrip("/"),
+    schedule_api_docs_url=settings.schedule_api_docs_url,
+)
 
 
 def _login_redirect() -> RedirectResponse:
@@ -69,6 +73,51 @@ def _task_status(value: str) -> Literal["todo", "done"]:
     return "done" if value == "done" else "todo"
 
 
+def _is_overdue(due_at: datetime | None) -> bool:
+    if due_at is None:
+        return False
+    now = datetime.now(due_at.tzinfo) if due_at.tzinfo else datetime.now()
+    return due_at < now
+
+
+def _due_label(due_at: datetime | None) -> str:
+    if due_at is None:
+        return "Без срока"
+    today = datetime.now(due_at.tzinfo).date() if due_at.tzinfo else date.today()
+    if due_at.date() == today:
+        return f"Сегодня, {due_at:%H:%M}"
+    if due_at.date() == today + timedelta(days=1):
+        return f"Завтра, {due_at:%H:%M}"
+    return due_at.strftime("%d.%m, %H:%M")
+
+
+def _dashboard_date(value: date) -> str:
+    weekdays = (
+        "Понедельник",
+        "Вторник",
+        "Среда",
+        "Четверг",
+        "Пятница",
+        "Суббота",
+        "Воскресенье",
+    )
+    months = (
+        "января",
+        "февраля",
+        "марта",
+        "апреля",
+        "мая",
+        "июня",
+        "июля",
+        "августа",
+        "сентября",
+        "октября",
+        "ноября",
+        "декабря",
+    )
+    return f"{weekdays[value.weekday()]}, {value.day} {months[value.month - 1]}"
+
+
 def _encode_avatar_file(file: UploadFile | None) -> str | None:
     if file is None or not file.filename:
         return None
@@ -86,7 +135,7 @@ def login_page(
     user: User | None = Depends(get_current_user_optional),
 ):
     if user is not None:
-        return RedirectResponse(url="/ui/profile", status_code=HTTP_303_SEE_OTHER)
+        return RedirectResponse(url="/ui", status_code=HTTP_303_SEE_OTHER)
     return templates.TemplateResponse(
         request=request,
         name="login.html",
@@ -121,7 +170,7 @@ def login_submit(
         secret_key=settings.secret_key,
         expires_minutes=settings.access_token_expire_minutes,
     )
-    return _cookie_response(token, location="/ui/profile")
+    return _cookie_response(token, location="/ui")
 
 
 @router.get("/register")
@@ -130,7 +179,7 @@ def register_page(
     user: User | None = Depends(get_current_user_optional),
 ):
     if user is not None:
-        return RedirectResponse(url="/ui/profile", status_code=HTTP_303_SEE_OTHER)
+        return RedirectResponse(url="/ui", status_code=HTTP_303_SEE_OTHER)
     return templates.TemplateResponse(
         request=request,
         name="register.html",
@@ -139,10 +188,44 @@ def register_page(
 
 
 @router.get("", include_in_schema=False)
-def ui_home(user: User | None = Depends(get_current_user_optional)):
+def ui_home(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_current_user_optional),
+):
     if user is None:
         return RedirectResponse(url="/ui/login", status_code=HTTP_303_SEE_OTHER)
-    return RedirectResponse(url="/ui/profile", status_code=HTTP_303_SEE_OTHER)
+    tasks = task_service.list_tasks(db, user)
+    active_tasks = [task for task in tasks if task.status != "done"]
+    active_tasks.sort(
+        key=lambda task: (
+            task.due_at is None,
+            task.due_at.timestamp() if task.due_at else float("inf"),
+        )
+    )
+    overdue_count = sum(_is_overdue(task.due_at) for task in active_tasks)
+    today = date.today()
+    upcoming_tasks = [
+        {
+            "task": task,
+            "due_label": _due_label(task.due_at),
+            "is_overdue": _is_overdue(task.due_at),
+            "is_due_today": task.due_at is not None
+            and task.due_at.date() == today,
+        }
+        for task in active_tasks[:5]
+    ]
+    return templates.TemplateResponse(
+        request=request,
+        name="dashboard.html",
+        context={
+            "user": user,
+            "active_count": len(active_tasks),
+            "overdue_count": overdue_count,
+            "today_label": _dashboard_date(today),
+            "upcoming_tasks": upcoming_tasks,
+        },
+    )
 
 
 @router.post("/register")
@@ -201,10 +284,19 @@ def tasks_list(
     if user is None:
         return _login_redirect()
     tasks = task_service.list_tasks(db, user)
+    task_filter = request.query_params.get("filter", "all")
+    if task_filter == "active":
+        tasks = [task for task in tasks if task.status != "done"]
+    elif task_filter == "overdue":
+        tasks = [
+            task
+            for task in tasks
+            if task.status != "done" and _is_overdue(task.due_at)
+        ]
     return templates.TemplateResponse(
         request=request,
         name="tasks_list.html",
-        context={"user": user, "tasks": tasks},
+        context={"user": user, "tasks": tasks, "task_filter": task_filter},
     )
 
 

@@ -204,9 +204,9 @@
 </div>
 
 <script>
-  const GROUPS_API = "http://{{ domain }}:5000/api/schedule/groups";
-  const SUBJECTS_API = "http://{{ domain }}:5000/api/schedule";
-  const userGroup = "{{ user.group_name or '' }}";
+  const GROUPS_API = {{ (schedule_api_base_url ~ "/groups") | tojson }};
+  const SUBJECTS_API = {{ schedule_api_base_url | tojson }};
+  const userGroup = {{ (user.group_name or '') | tojson }};
 
   function normalizeKey(value) {
     return (value || "")

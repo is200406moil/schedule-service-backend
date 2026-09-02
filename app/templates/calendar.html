@@ -68,18 +68,37 @@
 </div>
 
 <script>
-  const SCHEDULE_API = "http://{{ domain }}:5000/api/schedule";
-  const userGroup = "{{ user.group_name or '' }}";
+  const SCHEDULE_API = {{ schedule_api_base_url | tojson }};
+  const userGroup = {{ (user.group_name or '') | tojson }};
   const weekNames = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
   const monthNames = [
     "янв", "фев", "мар", "апр", "май", "июн",
     "июл", "авг", "сен", "окт", "ноя", "дек"
   ];
 
+  const calendarParams = new URLSearchParams(window.location.search);
+  const requestedDate = calendarParams.get("date");
+  const requestedLessonTime = calendarParams.get("lesson");
+
+  function parseRequestedDate(value) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value || "")) return null;
+    const [year, month, day] = value.split("-").map(Number);
+    const parsed = new Date(year, month - 1, day);
+    if (
+      parsed.getFullYear() !== year
+      || parsed.getMonth() !== month - 1
+      || parsed.getDate() !== day
+    ) return null;
+    return parsed;
+  }
+
+  const initialDate = parseRequestedDate(requestedDate) || new Date();
+
   const state = {
-    selected: new Date(),
-    view: new Date(),
+    selected: initialDate,
+    view: new Date(initialDate.getFullYear(), initialDate.getMonth(), 1),
     schedule: null,
+    scheduleError: false,
   };
 
   const grid = document.getElementById("calendar-grid");
@@ -89,16 +108,26 @@
   const daySub = document.getElementById("day-sub");
   const dayLessons = document.getElementById("day-lessons");
 
-  function weekNumber(date) {
-    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-    const dayNum = d.getUTCDay() || 7;
-    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  function academicWeekNumber(date) {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const semesterStart = month >= 8
+      ? new Date(year, 8, 1)
+      : new Date(year, 1, 9);
+    const firstMonday = new Date(semesterStart);
+    firstMonday.setDate(semesterStart.getDate() - ((semesterStart.getDay() + 6) % 7));
+
+    const dateUtc = Date.UTC(year, month, date.getDate());
+    const mondayUtc = Date.UTC(
+      firstMonday.getFullYear(),
+      firstMonday.getMonth(),
+      firstMonday.getDate(),
+    );
+    return Math.max(1, Math.floor((dateUtc - mondayUtc) / 604800000) + 1);
   }
 
   function parity(date) {
-    return weekNumber(date) % 2 === 0 ? 2 : 1;
+    return academicWeekNumber(date) % 2 === 0 ? 2 : 1;
   }
 
   function formatDate(date) {
@@ -113,18 +142,20 @@
   async function loadSchedule() {
     if (!userGroup) {
       state.schedule = null;
-      renderDay();
       return;
     }
-    const resp = await fetch(`${SCHEDULE_API}/${encodeURIComponent(userGroup)}/full_schedule`);
-    if (!resp.ok) {
+    try {
+      const resp = await fetch(`${SCHEDULE_API}/${encodeURIComponent(userGroup)}/full_schedule`);
+      if (!resp.ok) {
+        throw new Error(`Schedule API returned ${resp.status}`);
+      }
+      const data = await resp.json();
+      state.schedule = data.schedule || null;
+      state.scheduleError = false;
+    } catch (error) {
       state.schedule = null;
-      renderDay();
-      return;
+      state.scheduleError = true;
     }
-    const data = await resp.json();
-    state.schedule = data.schedule || null;
-    renderDay();
   }
 
   function lessonsForDate(date) {
@@ -165,6 +196,10 @@
       dayLessons.innerHTML = "<p class=\"hint\">Укажите группу в профиле, чтобы видеть расписание.</p>";
       return;
     }
+    if (state.scheduleError) {
+      dayLessons.innerHTML = "<p class=\"err\">Сервис расписания сейчас недоступен. Календарь можно использовать без списка занятий.</p>";
+      return;
+    }
     if (!lessons.length) {
       dayLessons.innerHTML = "<p class=\"hint\">Нет занятий в этот день.</p>";
       return;
@@ -172,19 +207,44 @@
     lessons.forEach((lesson) => {
       const card = document.createElement("div");
       card.className = "lesson-card interactive";
-      card.innerHTML = `
-        <div class="lesson-time">${lesson.time_start} - ${lesson.time_end}</div>
-        <div class="lesson-name">${lesson.name}</div>
-        <div class="lesson-meta">
-          <span>${lesson.types}</span>
-          <span>${lesson.rooms.join(", ")}</span>
-        </div>
-      `;
+      if (
+        requestedLessonTime
+        && String(lesson.time_start || "").slice(0, 5) === requestedLessonTime
+      ) {
+        card.classList.add("highlighted");
+      }
+
+      const time = document.createElement("div");
+      time.className = "lesson-time";
+      time.textContent = `${lesson.time_start || ""} - ${lesson.time_end || ""}`;
+
+      const name = document.createElement("div");
+      name.className = "lesson-name";
+      name.textContent = lesson.name || "Без названия";
+
+      const meta = document.createElement("div");
+      meta.className = "lesson-meta";
+      const type = document.createElement("span");
+      type.textContent = lesson.types || "";
+      const rooms = document.createElement("span");
+      rooms.textContent = Array.isArray(lesson.rooms)
+        ? lesson.rooms.join(", ")
+        : (lesson.rooms || "");
+      meta.append(type, rooms);
+
+      card.append(time, name, meta);
       card.addEventListener("click", () => {
         openTaskModal(lesson.name, lesson.time_start);
       });
       dayLessons.appendChild(card);
     });
+    const highlightedLesson = dayLessons.querySelector(".lesson-card.highlighted");
+    if (highlightedLesson) {
+      window.setTimeout(
+        () => highlightedLesson.scrollIntoView({behavior: "smooth", block: "center"}),
+        120,
+      );
+    }
   }
 
   function normalizeKey(value) {
@@ -359,7 +419,7 @@
     renderCalendar();
   });
 
-  loadSchedule().then(() => {
+  loadSchedule().finally(() => {
     const subjects = collectSubjects();
     const root = modal.querySelector('[data-autocomplete="subjects"]');
     if (root) {

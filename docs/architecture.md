@@ -9,16 +9,24 @@ flowchart LR
     Service[Services]
     Repository[Repositories]
     DB[(PostgreSQL)]
+    ScheduleAPI[RTU MIREA Schedule API]
+    ScheduleDB[(MongoDB cache)]
+    Source[Public schedule-of API]
 
     Client --> Router
     Router --> Service
     Service --> Repository
     Repository --> DB
+    Client --> ScheduleAPI
+    ScheduleAPI --> ScheduleDB
+    Source --> ScheduleAPI
 ```
 
 `routers` отвечают за HTTP: проверяют входные данные через Pydantic, получают текущего пользователя и формируют ответ. Правила доступа к задачам находятся в `services`. SQL-запросы собраны в `repositories`.
 
 Веб-маршруты используют те же модели и репозитории, что и REST API. Это уменьшает дублирование, хотя часть преобразования HTML-форм остаётся в `app/routers/web.py`.
+
+Календарь загружает расписание группы из отдельного API. Docker Compose поднимает этот сервис вместе с MongoDB и один раз запускает наполнение кэша. Адрес API передаётся в HTML из серверной конфигурации, поэтому он не зашит в шаблон. Ошибка внешнего сервиса не блокирует сам календарь и работу с задачами.
 
 ## Аутентификация
 

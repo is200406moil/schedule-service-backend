@@ -1,4 +1,3 @@
-from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,7 +13,8 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://user:password@localhost:15432/student_tasks"
     secret_key: str = "change-me-in-development"
     access_token_expire_minutes: int = 60
-    domain: str = Field(default="localhost", alias="DOMAIN")
+    schedule_api_base_url: str = "http://localhost:5000/api/schedule"
+    schedule_api_docs_url: str = "http://localhost:5000/docs"
 
 
 settings = Settings()

@@ -8,10 +8,14 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      schedule-api:
+        condition: service_healthy
     environment:
       DATABASE_URL: postgresql+psycopg://user:password@db:5432/student_tasks
       SECRET_KEY: ${SECRET_KEY:-change-me-in-development}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
+      SCHEDULE_API_BASE_URL: ${SCHEDULE_API_BASE_URL:-http://localhost:5000/api/schedule}
+      SCHEDULE_API_DOCS_URL: ${SCHEDULE_API_DOCS_URL:-http://localhost:5000/docs}
     ports:
       - "8000:8000"
     healthcheck:
@@ -41,5 +45,57 @@ services:
       timeout: 5s
       retries: 5
 
+  schedule-api:
+    image: student-tasks-schedule-api:local
+    build:
+      context: .
+      dockerfile: Dockerfile.schedule
+      args:
+        SCHEDULE_COMMIT: 08e7cf7ff18f39fc24eac0e0fe537b96ec9c6eec
+    depends_on:
+      schedule-db:
+        condition: service_healthy
+    environment:
+      DEBUG: "false"
+      MONGODB_URL: mongodb://schedule-db:27017
+      SECRET_REFRESH_KEY: ${SCHEDULE_REFRESH_KEY:-development-only}
+    ports:
+      - "5000:5000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://localhost:5000/health', timeout=2)
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  schedule-db:
+    image: mongo:7
+    volumes:
+      - student_tasks_schedule_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  schedule-refresh:
+    image: curlimages/curl:8.11.1
+    depends_on:
+      schedule-api:
+        condition: service_healthy
+    command:
+      - --silent
+      - --show-error
+      - --request
+      - POST
+      - http://schedule-api:5000/api/refresh
+      - --header
+      - "X-Refresh-Key: ${SCHEDULE_REFRESH_KEY:-development-only}"
+    restart: "no"
+
 volumes:
   student_tasks_pgdata:
+  student_tasks_schedule_data:

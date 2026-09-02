@@ -3,52 +3,81 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Задачи студента{% endblock %}</title>
-  <link rel="stylesheet" href="/static/style.css?v=2">
+  <meta name="theme-color" content="#f4f6fa">
+  <title>{% block title %}Мой семестр{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css?v=5">
 </head>
-<body>
-  <header class="top">
-    <nav>
-      <a href="/ui/calendar" class="nav-calendar">Календарь</a>
+<body class="{% if user %}app-body{% else %}public-body{% endif %}">
+  <svg class="icon-sprite" aria-hidden="true">
+    <symbol id="icon-layout-dashboard" viewBox="0 0 24 24"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></symbol>
+    <symbol id="icon-calendar-days" viewBox="0 0 24 24"><path d="M8 2v4M16 2v4M3 10h18"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></symbol>
+    <symbol id="icon-list-checks" viewBox="0 0 24 24"><path d="m3 5 2 2 4-4M3 12l2 2 4-4M3 19l2 2 4-4M13 6h8M13 13h8M13 20h8"/></symbol>
+    <symbol id="icon-user" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+    <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
+    <symbol id="icon-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="icon-graduation-cap" viewBox="0 0 24 24"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c3 3 9 3 12 0v-5M22 10v6"/></symbol>
+    <symbol id="icon-alert-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></symbol>
+    <symbol id="icon-circle-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="icon-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="icon-sparkles" viewBox="0 0 24 24"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3Z"/></symbol>
+    <symbol id="icon-coffee" viewBox="0 0 24 24"><path d="M10 2v2M14 2v2M6 2v2M18 8h1a4 4 0 0 1 0 8h-1M4 8h14v7a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5Z"/><path d="M6 20h12"/></symbol>
+    <symbol id="icon-cloud-off" viewBox="0 0 24 24"><path d="m2 2 20 20M5.8 5.8A7 7 0 0 0 5 19h14M9.2 4.6A7 7 0 0 1 19 11h1a4 4 0 0 1 2.3.7"/></symbol>
+  </svg>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/ui" aria-label="Мой семестр — обзор">
+        <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+        <span>Мой семестр</span>
+      </a>
+
       {% if user %}
-      <button type="button" class="avatar-btn" id="profile-avatar-btn" title="Профиль">
-        {% if user.avatar_base64 %}
-        <img src="{{ user.avatar_base64 }}" alt="Аватар" class="avatar-small">
-        {% else %}
-        <span class="avatar-icon">👤</span>
-        {% endif %}
-      </button>
+      {% set current_path = request.url.path %}
+      <nav class="main-nav" aria-label="Основная навигация">
+        <a href="/ui" {% if current_path == '/ui' %}class="active" aria-current="page"{% endif %}>
+          <svg class="icon" aria-hidden="true"><use href="#icon-layout-dashboard"></use></svg>
+          <span>Обзор</span>
+        </a>
+        <a href="/ui/calendar" {% if current_path == '/ui/calendar' %}class="active" aria-current="page"{% endif %}>
+          <svg class="icon" aria-hidden="true"><use href="#icon-calendar-days"></use></svg>
+          <span>Календарь</span>
+        </a>
+        <a href="/ui/tasks" {% if current_path.startswith('/ui/tasks') %}class="active" aria-current="page"{% endif %}>
+          <svg class="icon" aria-hidden="true"><use href="#icon-list-checks"></use></svg>
+          <span>Задачи</span>
+        </a>
+      </nav>
+      <div class="topbar-actions">
+        <a class="quick-add" href="/ui/tasks/new" aria-label="Создать задачу">
+          <svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg>
+          <span>Новая задача</span>
+        </a>
+        <a class="avatar-link{% if current_path == '/ui/profile' %} active{% endif %}" href="/ui/profile" aria-label="Открыть профиль">
+          {% if user.avatar_base64 %}
+          <img src="{{ user.avatar_base64 }}" alt="" class="avatar-small">
+          {% else %}
+          <span class="avatar-initials">{% if user.first_name %}{{ user.first_name[0] | upper }}{% else %}<svg class="icon" aria-hidden="true"><use href="#icon-user"></use></svg>{% endif %}</span>
+          {% endif %}
+        </a>
+      </div>
       {% else %}
-      <a href="/ui/login">Вход</a>
-      <a href="/ui/register">Регистрация</a>
+      <nav class="public-nav" aria-label="Навигация">
+        <a href="/ui/login">Войти</a>
+        <a class="button button-primary" href="/ui/register">Создать аккаунт</a>
+      </nav>
       {% endif %}
-    </nav>
+    </div>
   </header>
-  <script>
-    const avatarBtn = document.getElementById('profile-avatar-btn');
-    if (avatarBtn) {
-      avatarBtn.addEventListener('click', () => {
-        window.location.href = '/ui/profile';
-      });
-    }
-  </script>
-  <main class="wrap">
+
+  <main class="app-main">
     {% block content %}{% endblock %}
   </main>
-  <footer class="footer" id="footer">
-    <div class="footer-inner">
-      <div>
-        <div class="footer-title">Гиёсидинов И. И.</div>
-        <div class="footer-sub">Москва, 2026</div>
-      </div>
-      <div class="footer-links">
-        <a class="footer-link" href="https://t.me/zema_offf" target="_blank" rel="noopener">
-          <span class="tg-icon">✈</span> Telegram
-        </a>
-        <a class="footer-link" href="/docs">API - Управление задачами</a>
-        <a class="footer-link" href="http://{{ domain }}:5000/docs">API - Расписание РТУ МИРЭА</a>
-      </div>
-    </div>
+
+  {% if not user %}
+  <footer class="public-footer">
+    <span>Учебный проект · Москва, 2026</span>
+    <a href="/docs">Документация API</a>
   </footer>
+  {% endif %}
 </body>
 </html>
