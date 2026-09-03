@@ -1,39 +1,175 @@
 {% extends "base.html" %}
-{% block title %}Мои задачи{% endblock %}
+{% block title %}Задачи · Мой семестр{% endblock %}
 {% block content %}
-<h1>{% if task_filter == 'active' %}Активные задачи{% elif task_filter == 'overdue' %}Просроченные задачи{% else %}Мои задачи{% endif %}</h1>
-<p><a class="btn" href="/ui/tasks/new">Новая задача</a></p>
-{% if not tasks %}
-<p class="hint">{% if task_filter == 'overdue' %}Просроченных задач нет.{% elif task_filter == 'active' %}Активных задач пока нет.{% else %}Пока нет задач — создайте первую.{% endif %}</p>
-{% else %}
-<div class="tasks-grid">
-  {% for t in tasks %}
-  <div class="task-card">
-    <div class="task-row">
-      <div class="task-content">
-        <div class="task-title"><a href="/ui/tasks/{{ t.id }}/edit">{{ t.title }}</a></div>
-        <div class="task-meta">
-          {% if t.due_at %}
-          <span class="task-date">📅 {{ t.due_at.strftime('%Y-%m-%d %H:%M') }}</span>
-          {% endif %}
-          {% if t.subject %}
-          <span class="task-subject">📚 {{ t.subject }}</span>
-          {% endif %}
-        </div>
-        {% if t.body %}
-        <div class="task-body">{{ t.body }}</div>
-        {% endif %}
-      </div>
-      <div class="task-actions">
-        <span class="status-indicator-card" {% if t.status == 'done' %}style="color: #52c41a;"{% else %}style="color: #ff4d4f;"{% endif %}>●</span>
-        <a href="/ui/tasks/{{ t.id }}/edit" class="icon-btn" title="Редактировать">✏️</a>
-        <form class="inline" action="/ui/tasks/{{ t.id }}/delete" method="post" onsubmit="return confirm('Удалить задачу?');">
-          <button type="submit" class="icon-btn danger" title="Удалить">🗑️</button>
-        </form>
-      </div>
+<div class="tasks-page">
+  <header class="page-hero tasks-hero">
+    <div>
+      <p class="eyebrow">Учебный план</p>
+      <h1>Задачи</h1>
+      <p class="page-description">Держите дедлайны в порядке и сосредоточьтесь на ближайшем.</p>
     </div>
+    <a class="button button-primary" href="/ui/tasks/new">
+      <svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg>
+      Новая задача
+    </a>
+  </header>
+
+  <nav class="task-filters" aria-label="Фильтры задач">
+    <a href="/ui/tasks" {% if task_filter == 'all' %}class="active" aria-current="page"{% endif %}>
+      Все <span>{{ task_counts.all }}</span>
+    </a>
+    <a href="/ui/tasks?filter=active" {% if task_filter == 'active' %}class="active" aria-current="page"{% endif %}>
+      Активные <span>{{ task_counts.active }}</span>
+    </a>
+    <a href="/ui/tasks?filter=today" {% if task_filter == 'today' %}class="active" aria-current="page"{% endif %}>
+      Сегодня <span>{{ task_counts.today }}</span>
+    </a>
+    <a href="/ui/tasks?filter=overdue" {% if task_filter == 'overdue' %}class="active" aria-current="page"{% endif %}>
+      Просроченные <span>{{ task_counts.overdue }}</span>
+    </a>
+    <a href="/ui/tasks?filter=done" {% if task_filter == 'done' %}class="active" aria-current="page"{% endif %}>
+      Выполненные <span>{{ task_counts.done }}</span>
+    </a>
+  </nav>
+
+  {% if task_sections %}
+  <div class="task-sections">
+    {% for section in task_sections %}
+    <section class="task-section" aria-labelledby="section-{{ section.key }}">
+      <div class="task-section-heading">
+        <div>
+          <h2 id="section-{{ section.key }}">{{ section.title }}</h2>
+          <p>{{ section.subtitle }}</p>
+        </div>
+        <span>{{ section["items"] | length }}</span>
+      </div>
+      <div class="task-list">
+        {% for item in section["items"] %}
+        <article class="task-list-item{% if item.is_done %} is-done{% elif item.is_overdue %} is-overdue{% endif %}" data-task-row>
+          <button
+            type="button"
+            class="task-state-toggle{% if item.is_done %} is-checked{% endif %}"
+            role="checkbox"
+            aria-checked="{{ 'true' if item.is_done else 'false' }}"
+            aria-label="{% if item.is_done %}Вернуть задачу «{{ item.task.title }}» в работу{% else %}Отметить задачу «{{ item.task.title }}» выполненной{% endif %}"
+            data-task-status-toggle="{{ item.task.id }}"
+            data-next-status="{{ 'todo' if item.is_done else 'done' }}"
+          >
+            <svg class="icon" aria-hidden="true"><use href="#icon-check"></use></svg>
+          </button>
+
+          <a class="task-list-content" href="/ui/tasks/{{ item.task.id }}/edit?return_to=/ui/tasks{% if task_filter != 'all' %}%3Ffilter%3D{{ task_filter }}{% endif %}">
+            <span class="task-list-title">{{ item.task.title }}</span>
+            {% if item.task.body %}<span class="task-list-body">{{ item.task.body }}</span>{% endif %}
+            <span class="task-list-meta">
+              {% if item.task.subject %}
+              <span><svg class="icon" aria-hidden="true"><use href="#icon-book-open"></use></svg>{{ item.task.subject }}</span>
+              {% endif %}
+              <span class="{% if item.is_overdue %}meta-danger{% endif %}">
+                <svg class="icon" aria-hidden="true"><use href="#icon-clock"></use></svg>{{ item.due_label }}
+              </span>
+            </span>
+          </a>
+
+          <details class="task-menu">
+            <summary aria-label="Действия с задачей {{ item.task.title }}">
+              <svg class="icon" aria-hidden="true"><use href="#icon-more-horizontal"></use></svg>
+            </summary>
+            <div class="task-menu-popover">
+              <a href="/ui/tasks/{{ item.task.id }}/edit?return_to=/ui/tasks{% if task_filter != 'all' %}%3Ffilter%3D{{ task_filter }}{% endif %}">
+                <svg class="icon" aria-hidden="true"><use href="#icon-pencil"></use></svg>
+                Редактировать
+              </a>
+              <form action="/ui/tasks/{{ item.task.id }}/delete" method="post" onsubmit="return confirm('Удалить задачу «{{ item.task.title }}»?');">
+                <input type="hidden" name="return_to" value="/ui/tasks{% if task_filter != 'all' %}?filter={{ task_filter }}{% endif %}">
+                <button type="submit">
+                  <svg class="icon" aria-hidden="true"><use href="#icon-trash"></use></svg>
+                  Удалить
+                </button>
+              </form>
+            </div>
+          </details>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+    {% endfor %}
   </div>
-  {% endfor %}
+  {% else %}
+  <section class="surface tasks-empty empty-state">
+    <span class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#icon-list-checks"></use></svg></span>
+    {% if task_filter == 'overdue' %}
+      <h2>Ничего не просрочено</h2>
+      <p>Отлично: все задачи укладываются в срок.</p>
+      <a class="button button-secondary" href="/ui/tasks">Показать все задачи</a>
+    {% elif task_filter == 'today' %}
+      <h2>На сегодня задач нет</h2>
+      <p>Можно заняться ближайшими делами или добавить новую задачу.</p>
+      <a class="button button-secondary" href="/ui/tasks/new">Добавить задачу</a>
+    {% elif task_filter == 'done' %}
+      <h2>Пока ничего не завершено</h2>
+      <p>Выполненные задачи будут собираться здесь.</p>
+      <a class="button button-secondary" href="/ui/tasks?filter=active">Открыть активные</a>
+    {% elif task_filter == 'active' %}
+      <h2>Все задачи выполнены</h2>
+      <p>Можно выдохнуть или запланировать следующий шаг.</p>
+      <a class="button button-secondary" href="/ui/tasks/new">Создать задачу</a>
+    {% else %}
+      <h2>Начните с первой задачи</h2>
+      <p>Добавьте дедлайн или небольшое дело — они появятся здесь и в обзоре.</p>
+      <a class="button button-primary" href="/ui/tasks/new">Создать задачу</a>
+    {% endif %}
+  </section>
+  {% endif %}
 </div>
-{% endif %}
+
+<div class="toast" id="tasks-toast" role="status" aria-live="polite"></div>
+
+<script>
+  (() => {
+    const toast = document.getElementById("tasks-toast");
+    const storedMessage = sessionStorage.getItem("tasks-toast");
+    if (storedMessage) {
+      sessionStorage.removeItem("tasks-toast");
+      toast.textContent = storedMessage;
+      toast.classList.add("show");
+      window.setTimeout(() => toast.classList.remove("show"), 2200);
+    }
+
+    document.querySelectorAll("[data-task-status-toggle]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        if (button.disabled) return;
+        button.disabled = true;
+        const row = button.closest("[data-task-row]");
+        const nextStatus = button.dataset.nextStatus;
+        try {
+          const response = await fetch(`/tasks/${button.dataset.taskStatusToggle}`, {
+            method: "PATCH",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({status: nextStatus}),
+          });
+          if (!response.ok) throw new Error("task update failed");
+          button.classList.toggle("is-checked", nextStatus === "done");
+          button.setAttribute("aria-checked", nextStatus === "done" ? "true" : "false");
+          row.classList.add("is-updating");
+          sessionStorage.setItem(
+            "tasks-toast",
+            nextStatus === "done" ? "Задача выполнена" : "Задача снова в работе",
+          );
+          window.setTimeout(() => window.location.reload(), 260);
+        } catch (error) {
+          button.disabled = false;
+          button.classList.add("has-error");
+          window.setTimeout(() => button.classList.remove("has-error"), 800);
+        }
+      });
+    });
+
+    document.addEventListener("click", (event) => {
+      document.querySelectorAll(".task-menu[open]").forEach((menu) => {
+        if (!menu.contains(event.target)) menu.removeAttribute("open");
+      });
+    });
+  })();
+</script>
 {% endblock %}

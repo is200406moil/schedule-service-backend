@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from fastapi.testclient import TestClient
 
 
@@ -73,3 +75,36 @@ def test_calendar_renders_with_configured_schedule_url(client: TestClient) -> No
     assert response.status_code == 200
     assert '"http://localhost:5000/api/schedule"' in response.text
     assert "http://:5000" not in response.text
+
+
+def test_web_task_filters_separate_active_and_completed_tasks(
+    client: TestClient,
+) -> None:
+    headers = register_and_login(client, "task-filters@example.com")
+    yesterday = datetime.now(timezone(timedelta(hours=3))) - timedelta(days=1)
+    client.post(
+        "/tasks",
+        headers=headers,
+        json={
+            "title": "Активная лабораторная",
+            "due_at": yesterday.replace(hour=12, minute=0).isoformat(),
+        },
+    )
+    client.post(
+        "/tasks",
+        headers=headers,
+        json={"title": "Готовый отчёт", "status": "done"},
+    )
+
+    active_response = client.get("/ui/tasks?filter=active", headers=headers)
+    done_response = client.get("/ui/tasks?filter=done", headers=headers)
+    overdue_response = client.get("/ui/tasks?filter=overdue", headers=headers)
+
+    assert active_response.status_code == 200
+    assert "Активная лабораторная" in active_response.text
+    assert "Готовый отчёт" not in active_response.text
+    assert done_response.status_code == 200
+    assert "Готовый отчёт" in done_response.text
+    assert "Активная лабораторная" not in done_response.text
+    assert overdue_response.status_code == 200
+    assert "Активная лабораторная" in overdue_response.text

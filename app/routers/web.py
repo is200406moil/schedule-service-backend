@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import base64
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Literal
 
@@ -18,12 +18,13 @@ from app.core.deps import (
     get_db,
 )
 from app.core.security import create_access_token, hash_password, verify_password
-from app.models import User
+from app.models import Task, User
 from app.repositories import task_repository, user_repository
 from app.schemas.task import TaskCreate, TaskUpdate
 from app.services import task_service
 
 router = APIRouter(prefix="/ui", tags=["web"])
+MOSCOW_TIMEZONE = timezone(timedelta(hours=3))
 
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
@@ -76,19 +77,99 @@ def _task_status(value: str) -> Literal["todo", "done"]:
 def _is_overdue(due_at: datetime | None) -> bool:
     if due_at is None:
         return False
-    now = datetime.now(due_at.tzinfo) if due_at.tzinfo else datetime.now()
-    return due_at < now
+    due_wall_time = due_at.replace(tzinfo=None)
+    moscow_wall_time = datetime.now(MOSCOW_TIMEZONE).replace(tzinfo=None)
+    return due_wall_time < moscow_wall_time
+
+
+def _moscow_today() -> date:
+    return datetime.now(MOSCOW_TIMEZONE).date()
 
 
 def _due_label(due_at: datetime | None) -> str:
     if due_at is None:
         return "Без срока"
-    today = datetime.now(due_at.tzinfo).date() if due_at.tzinfo else date.today()
+    today = _moscow_today()
     if due_at.date() == today:
-        return f"Сегодня, {due_at:%H:%M}"
+        return f"Сегодня · {due_at:%H:%M}"
     if due_at.date() == today + timedelta(days=1):
-        return f"Завтра, {due_at:%H:%M}"
-    return due_at.strftime("%d.%m, %H:%M")
+        return f"Завтра · {due_at:%H:%M}"
+    months = (
+        "января",
+        "февраля",
+        "марта",
+        "апреля",
+        "мая",
+        "июня",
+        "июля",
+        "августа",
+        "сентября",
+        "октября",
+        "ноября",
+        "декабря",
+    )
+    return f"{due_at.day} {months[due_at.month - 1]} · {due_at:%H:%M}"
+
+
+def _task_section_key(task: Task, today: date) -> str:
+    if task.status == "done":
+        return "done"
+    if task.due_at is None:
+        return "no_due"
+    if task.due_at.date() < today:
+        return "overdue"
+    if task.due_at.date() == today:
+        return "today"
+    return "upcoming"
+
+
+def _task_sections(tasks: list[Task], today: date) -> list[dict[str, object]]:
+    section_meta = (
+        ("overdue", "Просрочено", "Срок уже прошёл"),
+        ("today", "Сегодня", "На ближайшие часы"),
+        ("upcoming", "Ближайшие", "Запланировано дальше"),
+        ("no_due", "Без срока", "Можно сделать в свободное время"),
+        ("done", "Выполнено", "Готовые задачи"),
+    )
+    grouped: dict[str, list[Task]] = {key: [] for key, _, _ in section_meta}
+    for task in tasks:
+        key = _task_section_key(task, today)
+        grouped[key].append(task)
+
+    for key in ("overdue", "today", "upcoming"):
+        grouped[key].sort(key=lambda task: task.due_at.timestamp() if task.due_at else 0)
+    grouped["no_due"].sort(
+        key=lambda task: task.created_at.timestamp(),
+        reverse=True,
+    )
+    grouped["done"].sort(
+        key=lambda task: task.updated_at.timestamp(),
+        reverse=True,
+    )
+    return [
+        {
+            "key": key,
+            "title": title,
+            "subtitle": subtitle,
+            "items": [
+                {
+                    "task": task,
+                    "due_label": _due_label(task.due_at),
+                    "is_overdue": key == "overdue",
+                    "is_done": task.status == "done",
+                }
+                for task in grouped[key]
+            ],
+        }
+        for key, title, subtitle in section_meta
+        if grouped[key]
+    ]
+
+
+def _safe_ui_return(value: str | None, default: str = "/ui/tasks") -> str:
+    if value and value.startswith("/ui") and not value.startswith("//"):
+        return value
+    return default
 
 
 def _dashboard_date(value: date) -> str:
@@ -204,7 +285,7 @@ def ui_home(
         )
     )
     overdue_count = sum(_is_overdue(task.due_at) for task in active_tasks)
-    today = date.today()
+    today = _moscow_today()
     upcoming_tasks = [
         {
             "task": task,
@@ -283,20 +364,55 @@ def tasks_list(
 ):
     if user is None:
         return _login_redirect()
-    tasks = task_service.list_tasks(db, user)
+    all_tasks = task_service.list_tasks(db, user)
+    today = _moscow_today()
+    counts = {
+        "all": len(all_tasks),
+        "active": sum(task.status != "done" for task in all_tasks),
+        "today": sum(
+            task.status != "done"
+            and task.due_at is not None
+            and task.due_at.date() == today
+            for task in all_tasks
+        ),
+        "overdue": sum(
+            task.status != "done" and _is_overdue(task.due_at)
+            for task in all_tasks
+        ),
+        "done": sum(task.status == "done" for task in all_tasks),
+    }
     task_filter = request.query_params.get("filter", "all")
+    if task_filter not in counts:
+        task_filter = "all"
     if task_filter == "active":
-        tasks = [task for task in tasks if task.status != "done"]
+        tasks = [task for task in all_tasks if task.status != "done"]
+    elif task_filter == "today":
+        tasks = [
+            task
+            for task in all_tasks
+            if task.status != "done"
+            and task.due_at is not None
+            and task.due_at.date() == today
+        ]
     elif task_filter == "overdue":
         tasks = [
             task
-            for task in tasks
+            for task in all_tasks
             if task.status != "done" and _is_overdue(task.due_at)
         ]
+    elif task_filter == "done":
+        tasks = [task for task in all_tasks if task.status == "done"]
+    else:
+        tasks = all_tasks
     return templates.TemplateResponse(
         request=request,
         name="tasks_list.html",
-        context={"user": user, "tasks": tasks, "task_filter": task_filter},
+        context={
+            "user": user,
+            "task_sections": _task_sections(tasks, today),
+            "task_filter": task_filter,
+            "task_counts": counts,
+        },
     )
 
 
@@ -372,7 +488,12 @@ def task_new_form(
     return templates.TemplateResponse(
         request=request,
         name="task_form.html",
-        context={"user": user, "task": None, "heading": "Новая задача"},
+        context={
+            "user": user,
+            "task": None,
+            "heading": "Новая задача",
+            "return_to": _safe_ui_return(request.query_params.get("return_to")),
+        },
     )
 
 
@@ -385,6 +506,7 @@ def task_new_submit(
     status_done: str | None = Form(None),
     due_at: str | None = Form(None),
     subject: str | None = Form(None),
+    return_to: str | None = Form(None),
 ):
     if user is None:
         return _login_redirect()
@@ -399,7 +521,10 @@ def task_new_submit(
         subject=subject.strip() if subject else None,
     )
     task_service.create_task(db, user, data)
-    return RedirectResponse(url="/ui/profile", status_code=HTTP_303_SEE_OTHER)
+    return RedirectResponse(
+        url=_safe_ui_return(return_to),
+        status_code=HTTP_303_SEE_OTHER,
+    )
 
 
 @router.get("/tasks/{task_id}/edit")
@@ -413,11 +538,16 @@ def task_edit_form(
         return _login_redirect()
     task = task_repository.get_for_user(db, task_id, user.id)
     if task is None:
-        return RedirectResponse(url="/ui/profile", status_code=HTTP_303_SEE_OTHER)
+        return RedirectResponse(url="/ui/tasks", status_code=HTTP_303_SEE_OTHER)
     return templates.TemplateResponse(
         request=request,
         name="task_form.html",
-        context={"user": user, "task": task, "heading": "Редактирование"},
+        context={
+            "user": user,
+            "task": task,
+            "heading": "Редактировать задачу",
+            "return_to": _safe_ui_return(request.query_params.get("return_to")),
+        },
     )
 
 
@@ -432,11 +562,12 @@ def task_edit_submit(
     due_at: str | None = Form(None),
     clear_due_at: str | None = Form(None),
     subject: str | None = Form(None),
+    return_to: str | None = Form(None),
 ):
     if user is None:
         return _login_redirect()
     if task_repository.get_for_user(db, task_id, user.id) is None:
-        return RedirectResponse(url="/ui/profile", status_code=HTTP_303_SEE_OTHER)
+        return RedirectResponse(url="/ui/tasks", status_code=HTTP_303_SEE_OTHER)
     body_clean = None if body is None or body.strip() == "" else body.strip()
     if clear_due_at:
         due: datetime | None = None
@@ -451,7 +582,10 @@ def task_edit_submit(
         subject=subject.strip() if subject else None,
     )
     task_service.update_task(db, user, task_id, data)
-    return RedirectResponse(url="/ui/profile", status_code=HTTP_303_SEE_OTHER)
+    return RedirectResponse(
+        url=_safe_ui_return(return_to),
+        status_code=HTTP_303_SEE_OTHER,
+    )
 
 
 @router.post("/tasks/{task_id}/delete")
@@ -459,9 +593,13 @@ def task_delete(
     task_id: int,
     db: Session = Depends(get_db),
     user: User | None = Depends(get_current_user_optional),
+    return_to: str | None = Form(None),
 ):
     if user is None:
         return _login_redirect()
     if task_repository.get_for_user(db, task_id, user.id) is not None:
         task_service.delete_task(db, user, task_id)
-    return RedirectResponse(url="/ui/profile", status_code=HTTP_303_SEE_OTHER)
+    return RedirectResponse(
+        url=_safe_ui_return(return_to),
+        status_code=HTTP_303_SEE_OTHER,
+    )
