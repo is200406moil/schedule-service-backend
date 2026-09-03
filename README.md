@@ -85,11 +85,20 @@ Python 3.12, FastAPI, SQLAlchemy, PostgreSQL, Alembic, MongoDB, Jinja2, JavaScri
 ## Проверки
 
 ```bash
-ruff check app tests
-pytest
+python -m pip install -r requirements-dev.lock
+python -m ruff check .
+python -m ruff format --check app tests
+python -m pytest
 ```
 
 Тесты используют отдельную SQLite-базу в памяти, поэтому для их запуска не нужен работающий PostgreSQL.
+
+`requirements.txt` и `requirements-dev.txt` содержат допустимые диапазоны версий, а lock-файлы фиксируют проверенный набор зависимостей для Docker и CI. После изменения исходных списков их можно обновить так:
+
+```bash
+python -m piptools compile --strip-extras --output-file=requirements.lock requirements.txt
+python -m piptools compile --strip-extras --output-file=requirements-dev.lock requirements-dev.txt
+```
 
 ## Подробности
 
