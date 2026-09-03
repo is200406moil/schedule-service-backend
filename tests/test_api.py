@@ -120,3 +120,38 @@ def test_web_task_filters_separate_active_and_completed_tasks(
     assert "Активная лабораторная" not in done_response.text
     assert overdue_response.status_code == 200
     assert "Активная лабораторная" in overdue_response.text
+
+
+def test_profile_shows_progress_and_only_upcoming_active_tasks(
+    client: TestClient,
+) -> None:
+    headers = register_and_login(client, "profile@example.com")
+    client.post(
+        "/tasks",
+        headers=headers,
+        json={"title": "Upcoming profile task", "subject": "Backend"},
+    )
+    client.post(
+        "/tasks",
+        headers=headers,
+        json={"title": "Completed profile task", "status": "done"},
+    )
+
+    response = client.get("/ui/profile", headers=headers)
+
+    assert response.status_code == 200
+    assert "Задачи семестра" in response.text
+    assert "Upcoming profile task" in response.text
+    assert "Completed profile task" not in response.text
+    assert '<script src="/static/profile.js?v=1" defer></script>' in response.text
+
+
+def test_public_auth_pages_render_new_forms(client: TestClient) -> None:
+    login_response = client.get("/ui/login")
+    register_response = client.get("/ui/register")
+
+    assert login_response.status_code == 200
+    assert "Один экран для пар, задач и дедлайнов" in login_response.text
+    assert register_response.status_code == 200
+    assert "Обязательны только почта и пароль" in register_response.text
+    assert '<script src="/static/auth.js?v=1" defer></script>' in register_response.text

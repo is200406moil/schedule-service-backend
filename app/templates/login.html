@@ -1,19 +1,78 @@
 {% extends "base.html" %}
-{% block title %}Вход{% endblock %}
+{% block title %}Вход · Мой семестр{% endblock %}
 {% block content %}
-<h1>Вход</h1>
-{% if ok == "registered" %}
-<p class="ok">Регистрация прошла успешно. Войдите с теми же данными.</p>
-{% endif %}
-{% if error == "auth" %}
-<p class="err">Неверный email или пароль.</p>
-{% elif error == "inactive" %}
-<p class="err">Учётная запись отключена.</p>
-{% endif %}
-<form method="post" action="/ui/login" class="stack">
-  <label>Email<br><input type="email" name="email" required autocomplete="username"></label>
-  <label>Пароль<br><input type="password" name="password" required autocomplete="current-password"></label>
-  <button type="submit">Войти</button>
-</form>
-<p class="hint">Нет аккаунта? <a href="/ui/register">Регистрация</a></p>
+<div class="auth-layout auth-login-layout">
+  <section class="auth-intro" aria-labelledby="auth-intro-title">
+    <h1 id="auth-intro-title">Один экран для пар, задач и дедлайнов.</h1>
+    <p>«Мой семестр» помогает видеть учебную неделю целиком и не держать сроки в голове.</p>
+    <div class="auth-preview" aria-hidden="true">
+      <div class="auth-preview-top">
+        <span><i></i><i></i><i></i></span>
+        <b>Сегодня</b>
+      </div>
+      <div class="auth-preview-content">
+        <div class="auth-preview-date"><strong>03</strong><span>сентября</span></div>
+        <div class="auth-preview-lessons">
+          <span><i></i><b></b></span>
+          <span><i></i><b></b></span>
+          <span><i></i><b></b></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="surface auth-card" aria-labelledby="login-title">
+    <div class="auth-card-heading">
+      <span class="auth-card-icon"><svg class="icon" aria-hidden="true"><use href="#icon-user"></use></svg></span>
+      <p class="section-kicker">С возвращением</p>
+      <h2 id="login-title">Войдите в аккаунт</h2>
+      <p>Продолжите с того места, где остановились.</p>
+    </div>
+
+    {% if ok == "registered" %}
+    <div class="form-notice form-notice-success" role="status">
+      <svg class="icon" aria-hidden="true"><use href="#icon-circle-check"></use></svg>
+      <span><strong>Аккаунт создан.</strong> Теперь войдите с теми же данными.</span>
+    </div>
+    {% endif %}
+    {% if error == "auth" %}
+    <div class="form-notice form-notice-error" role="alert">
+      <svg class="icon" aria-hidden="true"><use href="#icon-alert-circle"></use></svg>
+      <span><strong>Не получилось войти.</strong> Проверьте почту и пароль.</span>
+    </div>
+    {% elif error == "inactive" %}
+    <div class="form-notice form-notice-error" role="alert">
+      <svg class="icon" aria-hidden="true"><use href="#icon-alert-circle"></use></svg>
+      <span>Эта учётная запись отключена.</span>
+    </div>
+    {% endif %}
+
+    <form method="post" action="/ui/login" class="auth-form">
+      <div class="field-group">
+        <label for="login-email">Электронная почта</label>
+        <div class="input-with-icon">
+          <svg class="icon" aria-hidden="true"><use href="#icon-mail"></use></svg>
+          <input type="email" id="login-email" name="email" required autocomplete="username" placeholder="name@example.com">
+        </div>
+      </div>
+      <div class="field-group">
+        <label for="login-password">Пароль</label>
+        <div class="input-with-icon">
+          <svg class="icon" aria-hidden="true"><use href="#icon-lock"></use></svg>
+          <input type="password" id="login-password" name="password" required autocomplete="current-password" placeholder="Введите пароль">
+        </div>
+      </div>
+      <button type="submit" class="button button-primary auth-submit">
+        Войти
+        <svg class="icon" aria-hidden="true"><use href="#icon-arrow-right"></use></svg>
+      </button>
+    </form>
+
+    <p class="auth-switch">Нет аккаунта? <a href="/ui/register">Создать бесплатно</a></p>
+    <div class="auth-security-note">
+      <svg class="icon" aria-hidden="true"><use href="#icon-shield-check"></use></svg>
+      Данные используются только внутри учебного сервиса.
+    </div>
+  </section>
+</div>
 {% endblock %}

@@ -462,10 +462,30 @@ def profile_page(
     if user is None:
         return _login_redirect()
     tasks = task_service.list_tasks(db, user)
+    active_tasks = [task for task in tasks if task.status != "done"]
+    active_tasks.sort(
+        key=lambda task: (
+            task.due_at is None,
+            task.due_at.timestamp() if task.due_at else float("inf"),
+        )
+    )
+    profile_tasks = [
+        {
+            "task": task,
+            "due_label": _due_label(task.due_at),
+            "is_overdue": _is_overdue(task.due_at),
+        }
+        for task in active_tasks[:3]
+    ]
     return templates.TemplateResponse(
         request=request,
         name="profile.html",
-        context={"user": user, "tasks": tasks},
+        context={
+            "user": user,
+            "active_count": len(active_tasks),
+            "completed_count": sum(task.status == "done" for task in tasks),
+            "profile_tasks": profile_tasks,
+        },
     )
 
 

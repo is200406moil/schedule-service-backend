@@ -1,101 +1,116 @@
 {% extends "base.html" %}
-{% block title %}Регистрация{% endblock %}
+{% block title %}Регистрация · Мой семестр{% endblock %}
 {% block content %}
-<h1>Регистрация</h1>
-{% if error == "exists" %}
-<p class="err">Такой email уже зарегистрирован.</p>
-{% elif error == "short" %}
-<p class="err">Пароль не короче 8 символов.</p>
-{% endif %}
-<form method="post" action="/ui/register" class="stack" enctype="multipart/form-data">
-  <label>Email<br><input type="email" name="email" required autocomplete="username"></label>
-  <label>Пароль (мин. 8 символов)<br><input type="password" name="password" required autocomplete="new-password" minlength="8"></label>
-  <label>Фамилия<br><input type="text" name="last_name" maxlength="120"></label>
-  <label>Имя<br><input type="text" name="first_name" maxlength="120"></label>
-  <label>Отчество<br><input type="text" name="patronymic" maxlength="120"></label>
-  <label>Дата рождения<br><input type="date" name="birth_date"></label>
-  <label>Группа
-    <div class="autocomplete" data-autocomplete="groups" data-placeholder="ИКБО-14-23">
-      <input type="text" name="group_name" maxlength="64" placeholder="ИКБО-14-23" autocomplete="off">
-      <div class="autocomplete-list"></div>
+<div class="auth-layout auth-register-layout">
+  <section class="auth-intro auth-register-intro" aria-labelledby="register-intro-title">
+    <span class="auth-intro-badge">
+      <svg class="icon" aria-hidden="true"><use href="#icon-graduation-cap"></use></svg>
+      Начните с учебной группы
+    </span>
+    <h1 id="register-intro-title">Соберите семестр в одном месте.</h1>
+    <p>Укажите группу — расписание появится автоматически. Остальное можно заполнить сейчас или позже в профиле.</p>
+    <ul class="auth-benefits">
+      <li><span><svg class="icon" aria-hidden="true"><use href="#icon-calendar-days"></use></svg></span><div><strong>Расписание</strong><small>Пары и кабинеты по вашей группе</small></div></li>
+      <li><span><svg class="icon" aria-hidden="true"><use href="#icon-list-checks"></use></svg></span><div><strong>Задачи</strong><small>Сроки рядом с учебными предметами</small></div></li>
+      <li><span><svg class="icon" aria-hidden="true"><use href="#icon-circle-check"></use></svg></span><div><strong>Прогресс</strong><small>Понятный обзор активных дел</small></div></li>
+    </ul>
+  </section>
+
+  <section class="surface auth-card auth-register-card" aria-labelledby="register-title">
+    <div class="auth-card-heading auth-register-heading">
+      <p class="section-kicker">Новый аккаунт</p>
+      <h2 id="register-title">Создайте профиль</h2>
+      <p>Обязательны только почта и пароль.</p>
     </div>
-  </label>
-  <label>Аватар
-    <input type="file" name="avatar_file" accept="image/*">
-  </label>
-  <button type="submit">Создать аккаунт</button>
-</form>
-<p class="hint">Уже есть аккаунт? <a href="/ui/login">Вход</a></p>
 
-<script>
-  const GROUPS_API = {{ (schedule_api_base_url ~ "/groups") | tojson }};
+    {% if error == "exists" %}
+    <div class="form-notice form-notice-error" role="alert">
+      <svg class="icon" aria-hidden="true"><use href="#icon-alert-circle"></use></svg>
+      <span>Аккаунт с такой почтой уже существует.</span>
+    </div>
+    {% elif error == "short" %}
+    <div class="form-notice form-notice-error" role="alert">
+      <svg class="icon" aria-hidden="true"><use href="#icon-alert-circle"></use></svg>
+      <span>Пароль должен содержать не меньше 8 символов.</span>
+    </div>
+    {% endif %}
 
-  function normalizeKey(value) {
-    return (value || "")
-      .toLowerCase()
-      .replace(/[^a-z0-9а-яё]+/gi, "");
-  }
+    <form method="post" action="/ui/register" class="auth-form register-form" enctype="multipart/form-data">
+      <fieldset class="auth-form-section">
+        <legend><span>1</span>Данные для входа</legend>
+        <div class="auth-form-grid">
+          <div class="field-group">
+            <label for="register-email">Электронная почта</label>
+            <div class="input-with-icon">
+              <svg class="icon" aria-hidden="true"><use href="#icon-mail"></use></svg>
+              <input type="email" id="register-email" name="email" required autocomplete="username" placeholder="name@example.com">
+            </div>
+          </div>
+          <div class="field-group">
+            <label for="register-password">Пароль</label>
+            <div class="input-with-icon">
+              <svg class="icon" aria-hidden="true"><use href="#icon-lock"></use></svg>
+              <input type="password" id="register-password" name="password" required autocomplete="new-password" minlength="8" placeholder="Не меньше 8 символов">
+            </div>
+          </div>
+        </div>
+      </fieldset>
 
-  function initAutocomplete(root, source, onPick) {
-    const input = root.querySelector("input");
-    const list = root.querySelector(".autocomplete-list");
-    let items = source || [];
+      <fieldset class="auth-form-section">
+        <legend><span>2</span>Личные данные <small>необязательно</small></legend>
+        <div class="auth-form-grid">
+          <div class="field-group">
+            <label for="register-last-name">Фамилия</label>
+            <input type="text" id="register-last-name" name="last_name" maxlength="120" autocomplete="family-name" placeholder="Иванов">
+          </div>
+          <div class="field-group">
+            <label for="register-first-name">Имя</label>
+            <input type="text" id="register-first-name" name="first_name" maxlength="120" autocomplete="given-name" placeholder="Иван">
+          </div>
+          <div class="field-group">
+            <label for="register-patronymic">Отчество</label>
+            <input type="text" id="register-patronymic" name="patronymic" maxlength="120" placeholder="Иванович">
+          </div>
+          <div class="field-group">
+            <label for="register-birth-date">Дата рождения</label>
+            <input type="date" id="register-birth-date" name="birth_date" autocomplete="bday">
+          </div>
+        </div>
+      </fieldset>
 
-    function render(filtered) {
-      list.innerHTML = "";
-      if (!filtered.length) {
-        list.classList.remove("open");
-        return;
-      }
-      filtered.slice(0, 8).forEach((value) => {
-        const option = document.createElement("button");
-        option.type = "button";
-        option.className = "autocomplete-item";
-        option.textContent = value;
-        option.addEventListener("click", () => {
-          input.value = value;
-          list.classList.remove("open");
-          if (onPick) onPick(value);
-        });
-        list.appendChild(option);
-      });
-      list.classList.add("open");
-    }
+      <fieldset class="auth-form-section">
+        <legend><span>3</span>Учёба и фотография <small>необязательно</small></legend>
+        <div class="auth-form-grid auth-study-grid">
+          <div class="field-group">
+            <label for="register-group">Учебная группа</label>
+            <div class="autocomplete input-with-icon" data-autocomplete="groups">
+              <svg class="icon" aria-hidden="true"><use href="#icon-graduation-cap"></use></svg>
+              <input type="text" id="register-group" name="group_name" maxlength="64" placeholder="Например, ИКБО-14-23" autocomplete="off">
+              <div class="autocomplete-list"></div>
+            </div>
+            <p class="field-hint">Нужна для автоматической загрузки расписания.</p>
+          </div>
+          <div class="field-group">
+            <span class="field-label">Фотография</span>
+            <label class="auth-file-input" for="register-avatar">
+              <span><svg class="icon" aria-hidden="true"><use href="#icon-upload"></use></svg></span>
+              <span><strong id="avatar-file-name">Выбрать файл</strong><small>JPG или PNG</small></span>
+            </label>
+            <input class="sr-only" type="file" id="register-avatar" name="avatar_file" accept="image/*">
+          </div>
+        </div>
+      </fieldset>
 
-    function filter() {
-      const query = normalizeKey(input.value);
-      if (!query) {
-        render(items);
-        return;
-      }
-      const filtered = items.filter((value) => normalizeKey(value).includes(query));
-      render(filtered);
-    }
+      <button type="submit" class="button button-primary auth-submit">
+        Создать аккаунт
+        <svg class="icon" aria-hidden="true"><use href="#icon-arrow-right"></use></svg>
+      </button>
+    </form>
 
-    input.addEventListener("input", filter);
-    input.addEventListener("focus", filter);
-    document.addEventListener("click", (event) => {
-      if (!root.contains(event.target)) {
-        list.classList.remove("open");
-      }
-    });
-  }
+    <p class="auth-switch">Уже есть аккаунт? <a href="/ui/login">Войти</a></p>
+  </section>
+</div>
 
-  async function loadGroups() {
-    try {
-      const resp = await fetch(GROUPS_API);
-      if (!resp.ok) return [];
-      const data = await resp.json();
-      return Array.isArray(data) ? data : data.groups || [];
-    } catch (err) {
-      return [];
-    }
-  }
-
-  loadGroups().then((groups) => {
-    document.querySelectorAll('[data-autocomplete="groups"]').forEach((root) => {
-      initAutocomplete(root, groups);
-    });
-  });
-</script>
+<script type="application/json" id="auth-data">{{ {"groupsApi": schedule_api_base_url ~ "/groups"} | tojson }}</script>
+<script src="/static/auth.js?v=1" defer></script>
 {% endblock %}
