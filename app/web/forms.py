@@ -5,6 +5,7 @@ from fastapi.responses import RedirectResponse
 from starlette.status import HTTP_303_SEE_OTHER
 
 from app.core.avatar import MAX_AVATAR_BYTES, encode_avatar
+from app.core.time import normalize_due_at
 
 
 def login_redirect() -> RedirectResponse:
@@ -17,7 +18,7 @@ def parse_due_at(raw: str | None) -> datetime | None:
     value = raw.strip()
     if not value:
         return None
-    return datetime.fromisoformat(value)
+    return normalize_due_at(datetime.fromisoformat(value))
 
 
 def safe_ui_return(value: str | None, default: str = "/ui/tasks") -> str:

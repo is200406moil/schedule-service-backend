@@ -53,7 +53,7 @@
               type="datetime-local"
               name="due_at"
               id="due-at"
-              value="{% if task and task.due_at %}{{ task.due_at.strftime('%Y-%m-%dT%H:%M') }}{% endif %}"
+              value="{{ task_due_value }}"
             >
           </div>
           <p class="field-hint">Оставьте пустым, если точной даты нет.</p>

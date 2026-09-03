@@ -9,6 +9,7 @@ from app.core.avatar import AvatarValidationError
 from app.core.config import settings
 from app.core.csrf import validate_csrf_token
 from app.core.deps import get_current_user_optional, get_db
+from app.core.time import as_utc
 from app.models import User
 from app.services import task_service, user_service
 from app.web.forms import encode_avatar_file, login_redirect
@@ -31,7 +32,7 @@ def profile_page(
     active_tasks.sort(
         key=lambda task: (
             task.due_at is None,
-            task.due_at.timestamp() if task.due_at else float("inf"),
+            as_utc(task.due_at).timestamp() if task.due_at else float("inf"),
         )
     )
     profile_tasks = [

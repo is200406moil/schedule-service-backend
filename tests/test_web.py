@@ -1,6 +1,23 @@
+from datetime import UTC, datetime, timedelta, timezone
+
 from fastapi.testclient import TestClient
 
+from app.core.time import datetime_local_value, normalize_due_at
+from app.schemas.task import TaskCreate
 from tests.helpers import register_and_login
+
+
+def test_deadlines_are_stored_as_utc_and_rendered_in_moscow_time() -> None:
+    task = TaskCreate(
+        title="Timezone task",
+        due_at=datetime(2026, 9, 3, 18, 30, tzinfo=timezone(timedelta(hours=3))),
+    )
+
+    assert task.due_at == datetime(2026, 9, 3, 15, 30, tzinfo=UTC)
+    assert normalize_due_at(datetime(2026, 9, 3, 18, 30)) == datetime(
+        2026, 9, 3, 15, 30, tzinfo=UTC
+    )
+    assert datetime_local_value(datetime(2026, 9, 3, 15, 30, tzinfo=UTC)) == ("2026-09-03T18:30")
 
 
 def test_calendar_renders_with_configured_schedule_url(client: TestClient) -> None:

@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.deps import get_current_user_optional, get_db
+from app.core.time import datetime_local_value
 from app.models import User
 from app.services import task_service
 from app.web.forms import login_redirect
@@ -26,7 +27,7 @@ def calendar_page(
             "title": task.title,
             "subject": task.subject,
             "status": task.status,
-            "due_at": task.due_at.strftime("%Y-%m-%dT%H:%M") if task.due_at else None,
+            "due_at": datetime_local_value(task.due_at) or None,
         }
         for task in tasks
     ]

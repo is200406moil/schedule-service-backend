@@ -1,8 +1,7 @@
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
+from app.core.time import MOSCOW_TIMEZONE, as_moscow, as_utc, moscow_date
 from app.models import Task
-
-MOSCOW_TIMEZONE = timezone(timedelta(hours=3))
 
 
 def moscow_today() -> date:
@@ -12,14 +11,13 @@ def moscow_today() -> date:
 def is_overdue(due_at: datetime | None) -> bool:
     if due_at is None:
         return False
-    due_wall_time = due_at.replace(tzinfo=None)
-    moscow_wall_time = datetime.now(MOSCOW_TIMEZONE).replace(tzinfo=None)
-    return due_wall_time < moscow_wall_time
+    return as_utc(due_at) < datetime.now(UTC)
 
 
 def due_label(due_at: datetime | None) -> str:
     if due_at is None:
         return "Без срока"
+    due_at = as_moscow(due_at)
     today = moscow_today()
     if due_at.date() == today:
         return f"Сегодня · {due_at:%H:%M}"
@@ -47,9 +45,10 @@ def _task_section_key(task: Task, today: date) -> str:
         return "done"
     if task.due_at is None:
         return "no_due"
-    if task.due_at.date() < today:
+    due_date = moscow_date(task.due_at)
+    if due_date < today:
         return "overdue"
-    if task.due_at.date() == today:
+    if due_date == today:
         return "today"
     return "upcoming"
 
@@ -68,7 +67,7 @@ def task_sections(tasks: list[Task], today: date) -> list[dict[str, object]]:
         grouped[key].append(task)
 
     for key in ("overdue", "today", "upcoming"):
-        grouped[key].sort(key=lambda task: task.due_at.timestamp() if task.due_at else 0)
+        grouped[key].sort(key=lambda task: as_utc(task.due_at).timestamp() if task.due_at else 0)
     grouped["no_due"].sort(
         key=lambda task: task.created_at.timestamp(),
         reverse=True,

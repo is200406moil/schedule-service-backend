@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user_optional, get_db
+from app.core.time import as_utc, moscow_date
 from app.models import User
 from app.services import task_service
 from app.web.forms import login_redirect
@@ -24,7 +25,7 @@ def ui_home(
     active_tasks.sort(
         key=lambda task: (
             task.due_at is None,
-            task.due_at.timestamp() if task.due_at else float("inf"),
+            as_utc(task.due_at).timestamp() if task.due_at else float("inf"),
         )
     )
     overdue_count = sum(is_overdue(task.due_at) for task in active_tasks)
@@ -34,7 +35,7 @@ def ui_home(
             "task": task,
             "due_label": due_label(task.due_at),
             "is_overdue": is_overdue(task.due_at),
-            "is_due_today": task.due_at is not None and task.due_at.date() == today,
+            "is_due_today": moscow_date(task.due_at) == today,
         }
         for task in active_tasks[:5]
     ]

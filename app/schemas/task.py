@@ -1,7 +1,9 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from app.core.time import normalize_due_at
 
 TaskStatus = Literal["todo", "done"]
 
@@ -13,6 +15,8 @@ class TaskCreate(BaseModel):
     due_at: datetime | None = None
     subject: str | None = Field(default=None, max_length=255)
 
+    _normalize_due_at = field_validator("due_at")(normalize_due_at)
+
 
 class TaskUpdate(BaseModel):
     title: str | None = Field(None, min_length=1, max_length=500)
@@ -20,6 +24,8 @@ class TaskUpdate(BaseModel):
     status: TaskStatus | None = None
     due_at: datetime | None = None
     subject: str | None = Field(default=None, max_length=255)
+
+    _normalize_due_at = field_validator("due_at")(normalize_due_at)
 
 
 class TaskRead(BaseModel):
@@ -34,3 +40,5 @@ class TaskRead(BaseModel):
     subject: str | None
     created_at: datetime
     updated_at: datetime
+
+    _normalize_due_at = field_validator("due_at")(normalize_due_at)

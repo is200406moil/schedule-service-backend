@@ -8,6 +8,7 @@ from starlette.status import HTTP_303_SEE_OTHER
 from app.core.config import settings
 from app.core.csrf import validate_csrf_token
 from app.core.deps import get_current_user_optional, get_db
+from app.core.time import datetime_local_value, moscow_date
 from app.models import User
 from app.schemas.task import TaskCreate, TaskUpdate
 from app.services import task_service
@@ -32,8 +33,7 @@ def tasks_list(
         "all": len(all_tasks),
         "active": sum(task.status != "done" for task in all_tasks),
         "today": sum(
-            task.status != "done" and task.due_at is not None and task.due_at.date() == today
-            for task in all_tasks
+            task.status != "done" and moscow_date(task.due_at) == today for task in all_tasks
         ),
         "overdue": sum(task.status != "done" and is_overdue(task.due_at) for task in all_tasks),
         "done": sum(task.status == "done" for task in all_tasks),
@@ -47,7 +47,7 @@ def tasks_list(
         tasks = [
             task
             for task in all_tasks
-            if task.status != "done" and task.due_at is not None and task.due_at.date() == today
+            if task.status != "done" and moscow_date(task.due_at) == today
         ]
     elif task_filter == "overdue":
         tasks = [task for task in all_tasks if task.status != "done" and is_overdue(task.due_at)]
@@ -80,6 +80,7 @@ def task_new_form(
         context={
             "user": user,
             "task": None,
+            "task_due_value": "",
             "heading": "Новая задача",
             "return_to": safe_ui_return(request.query_params.get("return_to")),
         },
@@ -135,6 +136,7 @@ def task_edit_form(
         context={
             "user": user,
             "task": task,
+            "task_due_value": datetime_local_value(task.due_at),
             "heading": "Редактировать задачу",
             "return_to": safe_ui_return(request.query_params.get("return_to")),
         },
