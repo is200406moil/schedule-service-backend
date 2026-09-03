@@ -1,8 +1,25 @@
 # Мой семестр
 
+[![CI](https://github.com/is200406moil/schedule-service-backend/actions/workflows/ci.yml/badge.svg)](https://github.com/is200406moil/schedule-service-backend/actions/workflows/ci.yml)
+
 Веб-приложение для студентов РТУ МИРЭА: показывает расписание группы и личные задачи в одном календаре.
 
 Проект начался как курсовая работа на вузовском курсе по backend-разработке, обучение проходило на платформе Яндекс Практикума. Мне хотелось сделать не ещё один список задач, а небольшой рабочий сервис, где дедлайны связаны с реальным расписанием.
+
+## Интерфейс
+
+<table>
+  <tr>
+    <th>Обзор дня</th>
+    <th>Календарь</th>
+    <th>Задачи</th>
+  </tr>
+  <tr>
+    <td><img src="docs/images/overview.png" alt="Расписание и ближайшие задачи на главной странице"></td>
+    <td><img src="docs/images/calendar.png" alt="Пары и дедлайны в общем календаре"></td>
+    <td><img src="docs/images/tasks.png" alt="Список задач с фильтрами и сроками"></td>
+  </tr>
+</table>
 
 ## Что умеет приложение
 
