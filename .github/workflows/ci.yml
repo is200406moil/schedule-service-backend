@@ -7,9 +7,33 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  test:
+  quality:
+    name: Quality and tests
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: student_tasks_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U user -d student_tasks_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql+psycopg://user:password@localhost:5432/student_tasks_ci
+      SECRET_KEY: ci-only-secret
 
     steps:
       - uses: actions/checkout@v7
@@ -17,6 +41,34 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install -r requirements-dev.txt
-      - run: ruff check .
-      - run: python -m pytest
+          cache-dependency-path: requirements-dev.lock
+      - name: Install locked dependencies
+        run: python -m pip install -r requirements-dev.lock
+      - name: Check Python lint
+        run: python -m ruff check .
+      - name: Check Python formatting
+        run: python -m ruff format --check app tests
+      - name: Check browser JavaScript syntax
+        shell: bash
+        run: |
+          for file in app/static/*.js; do
+            node --check "$file"
+          done
+      - name: Run tests with coverage
+        run: python -m pytest --cov=app --cov-report=term-missing --cov-fail-under=80
+      - name: Check PostgreSQL migrations
+        run: |
+          python -m alembic upgrade head
+          python -m alembic downgrade base
+          python -m alembic upgrade head
+
+  containers:
+    name: Docker build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+      - name: Validate Compose configuration
+        run: docker compose config --quiet
+      - name: Build application stack
+        run: docker compose build

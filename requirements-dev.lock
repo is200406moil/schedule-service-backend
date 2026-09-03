@@ -31,6 +31,8 @@ colorama==0.4.6
     # via
     #   build
     #   pytest
+coverage==7.16.0
+    # via pytest-cov
 cryptography==50.0.1
     # via python-jose
 dnspython==2.8.0
@@ -76,7 +78,9 @@ packaging==26.3
 pip-tools==7.6.1
     # via -r requirements-dev.txt
 pluggy==1.6.0
-    # via pytest
+    # via
+    #   pytest
+    #   pytest-cov
 psycopg==3.3.5
     # via -r requirements.txt
 psycopg-binary==3.3.5
@@ -104,6 +108,10 @@ pyproject-hooks==1.2.0
     #   build
     #   pip-tools
 pytest==8.4.2
+    # via
+    #   -r requirements-dev.txt
+    #   pytest-cov
+pytest-cov==7.1.0
     # via -r requirements-dev.txt
 python-dotenv==1.2.3
     # via
