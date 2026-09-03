@@ -419,14 +419,37 @@ def tasks_list(
 @router.get("/calendar")
 def calendar_page(
     request: Request,
+    db: Session = Depends(get_db),
     user: User | None = Depends(get_current_user_optional),
 ):
     if user is None:
         return _login_redirect()
+    tasks = task_service.list_tasks(db, user)
+    calendar_tasks = [
+        {
+            "id": task.id,
+            "title": task.title,
+            "subject": task.subject,
+            "status": task.status,
+            "due_at": task.due_at.strftime("%Y-%m-%dT%H:%M")
+            if task.due_at
+            else None,
+        }
+        for task in tasks
+    ]
     return templates.TemplateResponse(
         request=request,
         name="calendar.html",
-        context={"user": user},
+        context={
+            "user": user,
+            "calendar_data": {
+                "scheduleApi": settings.schedule_api_base_url.rstrip("/"),
+                "group": user.group_name or "",
+                "tasks": calendar_tasks,
+                "initialDate": request.query_params.get("date"),
+                "initialLesson": request.query_params.get("lesson"),
+            },
+        },
     )
 
 

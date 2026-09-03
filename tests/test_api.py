@@ -69,11 +69,23 @@ def test_user_cannot_read_another_users_task(client: TestClient) -> None:
 
 def test_calendar_renders_with_configured_schedule_url(client: TestClient) -> None:
     headers = register_and_login(client, "calendar@example.com")
+    client.post(
+        "/tasks",
+        headers=headers,
+        json={
+            "title": "Calendar task",
+            "subject": "Algorithms",
+            "due_at": "2026-09-03T18:30:00+03:00",
+        },
+    )
 
     response = client.get("/ui/calendar", headers=headers)
 
     assert response.status_code == 200
     assert '"http://localhost:5000/api/schedule"' in response.text
+    assert '"title": "Calendar task"' in response.text
+    assert '"due_at": "2026-09-03T18:30"' in response.text
+    assert '<script src="/static/calendar.js?v=1" defer></script>' in response.text
     assert "http://:5000" not in response.text
 
 
