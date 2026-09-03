@@ -10,9 +10,8 @@ from app.core.config import settings
 from app.core.csrf import validate_csrf_token
 from app.core.deps import ACCESS_TOKEN_COOKIE, get_current_user_optional, get_db
 from app.core.rate_limit import login_rate_limit_key, login_rate_limiter
-from app.core.security import create_access_token, hash_password, verify_password
 from app.models import User
-from app.repositories import user_repository
+from app.services import auth_service
 from app.web.forms import encode_avatar_file
 from app.web.templates import templates
 
@@ -36,10 +35,6 @@ def _cookie_response(token: str, *, location: str) -> RedirectResponse:
 def _clear_auth_cookie(response: RedirectResponse) -> RedirectResponse:
     response.delete_cookie(ACCESS_TOKEN_COOKIE, path="/")
     return response
-
-
-def _normalize_email(email: str) -> str:
-    return email.strip().lower()
 
 
 @router.get("/login")
@@ -69,32 +64,29 @@ def login_submit(
     csrf_token: str | None = Form(None),
 ):
     validate_csrf_token(request, csrf_token, settings.secret_key)
-    normalized_email = _normalize_email(email)
+    normalized_email = auth_service.normalize_email(email)
     rate_limit_key = login_rate_limit_key(request, normalized_email)
     if login_rate_limiter.retry_after(rate_limit_key) is not None:
         return RedirectResponse(
             url="/ui/login?err=rate",
             status_code=HTTP_303_SEE_OTHER,
         )
-    user = user_repository.get_by_email(db, normalized_email)
-    if user is None or not verify_password(password, user.password_hash):
+    try:
+        user = auth_service.authenticate_user(db, normalized_email, password)
+    except auth_service.InvalidCredentialsError:
         retry_after = login_rate_limiter.record_failure(rate_limit_key)
         error = "rate" if retry_after is not None else "auth"
         return RedirectResponse(
             url=f"/ui/login?err={error}",
             status_code=HTTP_303_SEE_OTHER,
         )
-    if not user.is_active:
+    except auth_service.InactiveUserError:
         return RedirectResponse(
             url="/ui/login?err=inactive",
             status_code=HTTP_303_SEE_OTHER,
         )
     login_rate_limiter.reset(rate_limit_key)
-    token = create_access_token(
-        subject=str(user.id),
-        secret_key=settings.secret_key,
-        expires_minutes=settings.access_token_expire_minutes,
-    )
+    token = auth_service.create_access_token_for_user(user)
     return _cookie_response(token, location="/ui")
 
 
@@ -127,17 +119,6 @@ def register_submit(
     csrf_token: str | None = Form(None),
 ):
     validate_csrf_token(request, csrf_token, settings.secret_key)
-    normalized_email = _normalize_email(email)
-    if len(password) < 8:
-        return RedirectResponse(
-            url="/ui/register?err=short",
-            status_code=HTTP_303_SEE_OTHER,
-        )
-    if user_repository.get_by_email(db, normalized_email):
-        return RedirectResponse(
-            url="/ui/register?err=exists",
-            status_code=HTTP_303_SEE_OTHER,
-        )
     try:
         avatar_base64 = encode_avatar_file(avatar_file)
     except AvatarValidationError:
@@ -145,17 +126,28 @@ def register_submit(
             url="/ui/register?err=avatar",
             status_code=HTTP_303_SEE_OTHER,
         )
-    user_repository.create(
-        db,
-        email=normalized_email,
-        password_hash=hash_password(password),
-        first_name=first_name.strip() if first_name else None,
-        last_name=last_name.strip() if last_name else None,
-        patronymic=patronymic.strip() if patronymic else None,
+    registration = auth_service.RegistrationData(
+        email=email,
+        password=password,
+        first_name=first_name,
+        last_name=last_name,
+        patronymic=patronymic,
         birth_date=datetime.fromisoformat(birth_date).date() if birth_date else None,
-        group_name=group_name.strip() if group_name else None,
+        group_name=group_name,
         avatar_base64=avatar_base64,
     )
+    try:
+        auth_service.register_user(db, registration)
+    except auth_service.PasswordTooShortError:
+        return RedirectResponse(
+            url="/ui/register?err=short",
+            status_code=HTTP_303_SEE_OTHER,
+        )
+    except auth_service.EmailAlreadyRegisteredError:
+        return RedirectResponse(
+            url="/ui/register?err=exists",
+            status_code=HTTP_303_SEE_OTHER,
+        )
     return RedirectResponse(
         url="/ui/login?ok=registered",
         status_code=HTTP_303_SEE_OTHER,

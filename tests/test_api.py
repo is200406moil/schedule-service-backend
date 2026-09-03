@@ -163,6 +163,43 @@ def test_public_auth_pages_render_new_forms(client: TestClient) -> None:
     assert '<script src="/static/auth.js?v=1" defer></script>' in register_response.text
 
 
+def test_web_registration_and_login_share_authentication_rules(
+    client: TestClient,
+) -> None:
+    client.get("/ui/register")
+    csrf_token = client.cookies.get("csrf_token")
+    register_response = client.post(
+        "/ui/register",
+        data={
+            "email": "  Web-Flow@Example.com ",
+            "password": "strong-password",
+            "first_name": "  Анна  ",
+            "csrf_token": csrf_token,
+        },
+        follow_redirects=False,
+    )
+
+    assert register_response.status_code == 303
+    assert register_response.headers["location"] == "/ui/login?ok=registered"
+
+    login_response = client.post(
+        "/ui/login",
+        data={
+            "email": "web-flow@example.com",
+            "password": "strong-password",
+            "csrf_token": csrf_token,
+        },
+        follow_redirects=False,
+    )
+
+    assert login_response.status_code == 303
+    assert login_response.headers["location"] == "/ui"
+    assert client.cookies.get("access_token")
+    profile_response = client.get("/ui/profile")
+    assert profile_response.status_code == 200
+    assert "Анна" in profile_response.text
+
+
 def test_html_forms_require_a_valid_csrf_token(client: TestClient) -> None:
     login_page = client.get("/ui/login")
     csrf_token = client.cookies.get("csrf_token")

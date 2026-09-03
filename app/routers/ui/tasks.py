@@ -9,7 +9,6 @@ from app.core.config import settings
 from app.core.csrf import validate_csrf_token
 from app.core.deps import get_current_user_optional, get_db
 from app.models import User
-from app.repositories import task_repository
 from app.schemas.task import TaskCreate, TaskUpdate
 from app.services import task_service
 from app.web.forms import login_redirect, parse_due_at, safe_ui_return
@@ -137,7 +136,7 @@ def task_edit_form(
 ):
     if user is None:
         return login_redirect()
-    task = task_repository.get_for_user(db, task_id, user.id)
+    task = task_service.find_task(db, user, task_id)
     if task is None:
         return RedirectResponse(url="/ui/tasks", status_code=HTTP_303_SEE_OTHER)
     return templates.TemplateResponse(
@@ -170,7 +169,7 @@ def task_edit_submit(
     validate_csrf_token(request, csrf_token, settings.secret_key)
     if user is None:
         return login_redirect()
-    if task_repository.get_for_user(db, task_id, user.id) is None:
+    if task_service.find_task(db, user, task_id) is None:
         return RedirectResponse(url="/ui/tasks", status_code=HTTP_303_SEE_OTHER)
     body_clean = None if body is None or body.strip() == "" else body.strip()
     due: datetime | None = None if clear_due_at else parse_due_at(due_at)
@@ -200,8 +199,7 @@ def task_delete(
     validate_csrf_token(request, csrf_token, settings.secret_key)
     if user is None:
         return login_redirect()
-    if task_repository.get_for_user(db, task_id, user.id) is not None:
-        task_service.delete_task(db, user, task_id)
+    task_service.delete_task_if_exists(db, user, task_id)
     return RedirectResponse(
         url=safe_ui_return(return_to),
         status_code=HTTP_303_SEE_OTHER,

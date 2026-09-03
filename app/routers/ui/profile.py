@@ -10,8 +10,7 @@ from app.core.config import settings
 from app.core.csrf import validate_csrf_token
 from app.core.deps import get_current_user_optional, get_db
 from app.models import User
-from app.repositories import user_repository
-from app.services import task_service
+from app.services import task_service, user_service
 from app.web.forms import encode_avatar_file, login_redirect
 from app.web.presentation import due_label, is_overdue
 from app.web.templates import templates
@@ -92,6 +91,5 @@ def profile_submit(
         )
     if avatar_base64 is not None:
         updates["avatar_base64"] = avatar_base64
-    if updates:
-        user_repository.update(db, user, updates)
+    user_service.update_user(db, user, updates)
     return RedirectResponse(url="/ui/profile", status_code=HTTP_303_SEE_OTHER)

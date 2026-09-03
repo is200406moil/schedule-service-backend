@@ -17,6 +17,10 @@ def get_task(db: Session, user: User, task_id: int) -> Task:
     return task
 
 
+def find_task(db: Session, user: User, task_id: int) -> Task | None:
+    return task_repository.get_for_user(db, task_id, user.id)
+
+
 def create_task(db: Session, user: User, data: TaskCreate) -> Task:
     return task_repository.create(
         db,
@@ -40,3 +44,11 @@ def update_task(db: Session, user: User, task_id: int, data: TaskUpdate) -> Task
 def delete_task(db: Session, user: User, task_id: int) -> None:
     task = get_task(db, user, task_id)
     task_repository.delete(db, task)
+
+
+def delete_task_if_exists(db: Session, user: User, task_id: int) -> bool:
+    task = find_task(db, user, task_id)
+    if task is None:
+        return False
+    task_repository.delete(db, task)
+    return True
