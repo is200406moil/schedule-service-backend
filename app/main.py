@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 from app.core.csrf import CSRF_COOKIE, is_valid_csrf_token, issue_csrf_token
-from app.routers import auth, tasks, web
+from app.routers import auth, tasks, ui
 
 APP_DIR = Path(__file__).resolve().parent
 
@@ -57,7 +57,7 @@ app.mount("/static", StaticFiles(directory=str(APP_DIR / "static")), name="stati
 
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(tasks.router, prefix="/tasks", tags=["tasks"])
-app.include_router(web.router)
+app.include_router(ui.router)
 
 
 @app.get("/health", tags=["system"])
