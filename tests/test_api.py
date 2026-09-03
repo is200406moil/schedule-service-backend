@@ -152,6 +152,23 @@ def test_profile_shows_progress_and_only_upcoming_active_tasks(
     assert '<script src="/static/profile.js?v=1" defer></script>' in response.text
 
 
+def test_web_pages_keep_behavior_in_external_scripts(client: TestClient) -> None:
+    headers = register_and_login(client, "external-scripts@example.com")
+
+    dashboard = client.get("/ui", headers=headers)
+    tasks = client.get("/ui/tasks", headers=headers)
+    task_form = client.get("/ui/tasks/new", headers=headers)
+
+    assert dashboard.status_code == 200
+    assert 'id="dashboard-data" type="application/json"' in dashboard.text
+    assert '<script src="/static/dashboard.js?v=1" defer></script>' in dashboard.text
+    assert tasks.status_code == 200
+    assert '<script src="/static/tasks.js?v=1" defer></script>' in tasks.text
+    assert task_form.status_code == 200
+    assert 'id="task-form-data" type="application/json"' in task_form.text
+    assert '<script src="/static/task_form.js?v=1" defer></script>' in task_form.text
+
+
 def test_public_auth_pages_render_new_forms(client: TestClient) -> None:
     login_response = client.get("/ui/login")
     register_response = client.get("/ui/register")
