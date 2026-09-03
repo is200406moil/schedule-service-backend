@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import base64
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Literal
@@ -11,12 +10,15 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_303_SEE_OTHER
 
+from app.core.avatar import MAX_AVATAR_BYTES, AvatarValidationError, encode_avatar
 from app.core.config import settings
+from app.core.csrf import validate_csrf_token
 from app.core.deps import (
     ACCESS_TOKEN_COOKIE,
     get_current_user_optional,
     get_db,
 )
+from app.core.rate_limit import login_rate_limit_key, login_rate_limiter
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models import Task, User
 from app.repositories import task_repository, user_repository
@@ -46,6 +48,7 @@ def _cookie_response(token: str, *, location: str) -> RedirectResponse:
         token,
         httponly=True,
         max_age=max_age,
+        secure=settings.cookie_secure,
         samesite="lax",
         path="/",
     )
@@ -202,12 +205,10 @@ def _dashboard_date(value: date) -> str:
 def _encode_avatar_file(file: UploadFile | None) -> str | None:
     if file is None or not file.filename:
         return None
-    raw = file.file.read()
+    raw = file.file.read(MAX_AVATAR_BYTES + 1)
     if not raw:
         return None
-    content_type = file.content_type or "application/octet-stream"
-    b64 = base64.b64encode(raw).decode("utf-8")
-    return f"data:{content_type};base64,{b64}"
+    return encode_avatar(file.content_type, raw)
 
 
 @router.get("/login")
@@ -230,15 +231,25 @@ def login_page(
 
 @router.post("/login")
 def login_submit(
+    request: Request,
     db: Session = Depends(get_db),
     email: str = Form(...),
     password: str = Form(...),
+    csrf_token: str | None = Form(None),
 ):
+    validate_csrf_token(request, csrf_token, settings.secret_key)
     e = _normalize_email(email)
+    rate_limit_key = login_rate_limit_key(request, e)
+    if login_rate_limiter.retry_after(rate_limit_key) is not None:
+        return RedirectResponse(
+            url="/ui/login?err=rate",
+            status_code=HTTP_303_SEE_OTHER,
+        )
     u = user_repository.get_by_email(db, e)
     if u is None or not verify_password(password, u.password_hash):
+        retry_after = login_rate_limiter.record_failure(rate_limit_key)
         return RedirectResponse(
-            url="/ui/login?err=auth",
+            url=f"/ui/login?err={'rate' if retry_after is not None else 'auth'}",
             status_code=HTTP_303_SEE_OTHER,
         )
     if not u.is_active:
@@ -246,6 +257,7 @@ def login_submit(
             url="/ui/login?err=inactive",
             status_code=HTTP_303_SEE_OTHER,
         )
+    login_rate_limiter.reset(rate_limit_key)
     token = create_access_token(
         subject=str(u.id),
         secret_key=settings.secret_key,
@@ -311,6 +323,7 @@ def ui_home(
 
 @router.post("/register")
 def register_submit(
+    request: Request,
     db: Session = Depends(get_db),
     email: str = Form(...),
     password: str = Form(...),
@@ -320,7 +333,9 @@ def register_submit(
     birth_date: str | None = Form(None),
     group_name: str | None = Form(None),
     avatar_file: UploadFile | None = File(None),
+    csrf_token: str | None = Form(None),
 ):
+    validate_csrf_token(request, csrf_token, settings.secret_key)
     e = _normalize_email(email)
     if len(password) < 8:
         return RedirectResponse(
@@ -332,7 +347,13 @@ def register_submit(
             url="/ui/register?err=exists",
             status_code=HTTP_303_SEE_OTHER,
         )
-    avatar_base64 = _encode_avatar_file(avatar_file)
+    try:
+        avatar_base64 = _encode_avatar_file(avatar_file)
+    except AvatarValidationError:
+        return RedirectResponse(
+            url="/ui/register?err=avatar",
+            status_code=HTTP_303_SEE_OTHER,
+        )
     user_repository.create(
         db,
         email=e,
@@ -351,7 +372,8 @@ def register_submit(
 
 
 @router.post("/logout")
-def logout():
+def logout(request: Request, csrf_token: str | None = Form(None)):
+    validate_csrf_token(request, csrf_token, settings.secret_key)
     resp = RedirectResponse(url="/ui/login", status_code=HTTP_303_SEE_OTHER)
     return _clear_auth_cookie(resp)
 
@@ -485,12 +507,14 @@ def profile_page(
             "active_count": len(active_tasks),
             "completed_count": sum(task.status == "done" for task in tasks),
             "profile_tasks": profile_tasks,
+            "error": request.query_params.get("err"),
         },
     )
 
 
 @router.post("/profile")
 def profile_submit(
+    request: Request,
     db: Session = Depends(get_db),
     user: User | None = Depends(get_current_user_optional),
     first_name: str | None = Form(None),
@@ -499,7 +523,9 @@ def profile_submit(
     birth_date: str | None = Form(None),
     group_name: str | None = Form(None),
     avatar_file: UploadFile | None = File(None),
+    csrf_token: str | None = Form(None),
 ):
+    validate_csrf_token(request, csrf_token, settings.secret_key)
     if user is None:
         return _login_redirect()
     updates: dict[str, object] = {}
@@ -513,7 +539,13 @@ def profile_submit(
         updates["birth_date"] = datetime.fromisoformat(birth_date).date()
     if group_name is not None and group_name.strip() != "":
         updates["group_name"] = group_name.strip()
-    avatar_base64 = _encode_avatar_file(avatar_file)
+    try:
+        avatar_base64 = _encode_avatar_file(avatar_file)
+    except AvatarValidationError:
+        return RedirectResponse(
+            url="/ui/profile?err=avatar",
+            status_code=HTTP_303_SEE_OTHER,
+        )
     if avatar_base64 is not None:
         updates["avatar_base64"] = avatar_base64
     if updates:
@@ -542,6 +574,7 @@ def task_new_form(
 
 @router.post("/tasks/new")
 def task_new_submit(
+    request: Request,
     db: Session = Depends(get_db),
     user: User | None = Depends(get_current_user_optional),
     title: str = Form(...),
@@ -550,7 +583,9 @@ def task_new_submit(
     due_at: str | None = Form(None),
     subject: str | None = Form(None),
     return_to: str | None = Form(None),
+    csrf_token: str | None = Form(None),
 ):
+    validate_csrf_token(request, csrf_token, settings.secret_key)
     if user is None:
         return _login_redirect()
     body_clean = None if body is None or body.strip() == "" else body.strip()
@@ -596,6 +631,7 @@ def task_edit_form(
 
 @router.post("/tasks/{task_id}/edit")
 def task_edit_submit(
+    request: Request,
     task_id: int,
     db: Session = Depends(get_db),
     user: User | None = Depends(get_current_user_optional),
@@ -606,7 +642,9 @@ def task_edit_submit(
     clear_due_at: str | None = Form(None),
     subject: str | None = Form(None),
     return_to: str | None = Form(None),
+    csrf_token: str | None = Form(None),
 ):
+    validate_csrf_token(request, csrf_token, settings.secret_key)
     if user is None:
         return _login_redirect()
     if task_repository.get_for_user(db, task_id, user.id) is None:
@@ -633,11 +671,14 @@ def task_edit_submit(
 
 @router.post("/tasks/{task_id}/delete")
 def task_delete(
+    request: Request,
     task_id: int,
     db: Session = Depends(get_db),
     user: User | None = Depends(get_current_user_optional),
     return_to: str | None = Form(None),
+    csrf_token: str | None = Form(None),
 ):
+    validate_csrf_token(request, csrf_token, settings.secret_key)
     if user is None:
         return _login_redirect()
     if task_repository.get_for_user(db, task_id, user.id) is not None:

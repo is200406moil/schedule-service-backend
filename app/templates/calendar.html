@@ -95,6 +95,7 @@
       </button>
     </div>
     <form method="post" action="/ui/tasks/new" class="task-editor-form" id="modal-task-form">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
       <input type="hidden" name="return_to" id="modal-return-to" value="/ui/calendar">
       <div class="field-group">
         <label for="modal-title">Название</label>

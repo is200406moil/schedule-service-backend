@@ -21,6 +21,7 @@
       action="/ui/tasks/new"
       {% endif %}
     >
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
       <input type="hidden" name="return_to" value="{{ return_to }}">
 
       <div class="field-group field-full">

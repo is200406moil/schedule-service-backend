@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f4f6fa">
+  <meta name="csrf-token" content="{{ request.state.csrf_token }}">
   <title>{% block title %}Мой семестр{% endblock %}</title>
   <link rel="stylesheet" href="/static/style.css?v=8">
 </head>

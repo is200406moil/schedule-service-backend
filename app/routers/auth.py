@@ -1,8 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.deps import get_current_user, get_db
+from app.core.rate_limit import (
+    login_rate_limit_key,
+    login_rate_limiter,
+    raise_rate_limit,
+)
 from app.core.security import create_access_token, hash_password, verify_password
 from app.models import User
 from app.repositories import user_repository
@@ -39,16 +44,24 @@ def register(data: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-def login(data: LoginRequest, db: Session = Depends(get_db)) -> Token:
+def login(request: Request, data: LoginRequest, db: Session = Depends(get_db)) -> Token:
     email = _normalize_email(str(data.email))
+    rate_limit_key = login_rate_limit_key(request, email)
+    retry_after = login_rate_limiter.retry_after(rate_limit_key)
+    if retry_after is not None:
+        raise_rate_limit(retry_after)
     user = user_repository.get_by_email(db, email)
     if user is None or not verify_password(data.password, user.password_hash):
+        retry_after = login_rate_limiter.record_failure(rate_limit_key)
+        if retry_after is not None:
+            raise_rate_limit(retry_after)
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
         )
     if not user.is_active:
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Inactive user")
+    login_rate_limiter.reset(rate_limit_key)
     token = create_access_token(
         subject=str(user.id),
         secret_key=settings.secret_key,

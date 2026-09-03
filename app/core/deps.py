@@ -5,6 +5,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.csrf import CSRF_HEADER, validate_csrf_token
 from app.core.database import SessionLocal
 from app.core.security import TokenDecodeError, get_token_subject
 from app.models import User
@@ -29,7 +30,18 @@ def get_raw_access_token(
 ) -> str | None:
     if credentials is not None:
         return credentials.credentials
-    return request.cookies.get(ACCESS_TOKEN_COOKIE)
+    token = request.cookies.get(ACCESS_TOKEN_COOKIE)
+    if (
+        token is not None
+        and request.method not in {"GET", "HEAD", "OPTIONS", "TRACE"}
+        and not request.url.path.startswith("/ui")
+    ):
+        validate_csrf_token(
+            request,
+            request.headers.get(CSRF_HEADER),
+            settings.secret_key,
+        )
+    return token
 
 
 def _user_from_token(db: Session, token: str) -> User:

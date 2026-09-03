@@ -3,6 +3,7 @@
   if (!dataNode) return;
 
   const config = JSON.parse(dataNode.textContent || "{}");
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || "";
   const monthNames = [
     "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
     "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
@@ -393,7 +394,10 @@
     try {
       const response = await fetch(`/tasks/${task.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken,
+        },
         body: JSON.stringify({ status: nextStatus }),
       });
       if (!response.ok) throw new Error("task update failed");

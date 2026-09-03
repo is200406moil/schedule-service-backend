@@ -1,6 +1,9 @@
+import base64
 from datetime import datetime, timedelta, timezone
 
 from fastapi.testclient import TestClient
+
+from app.core.config import settings
 
 
 def register_and_login(client: TestClient, email: str) -> dict[str, str]:
@@ -25,6 +28,9 @@ def test_healthcheck(client: TestClient) -> None:
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-frame-options"] == "DENY"
+    assert "frame-ancestors 'none'" in response.headers["content-security-policy"]
 
 
 def test_task_crud(client: TestClient) -> None:
@@ -155,3 +161,93 @@ def test_public_auth_pages_render_new_forms(client: TestClient) -> None:
     assert register_response.status_code == 200
     assert "Обязательны только почта и пароль" in register_response.text
     assert '<script src="/static/auth.js?v=1" defer></script>' in register_response.text
+
+
+def test_html_forms_require_a_valid_csrf_token(client: TestClient) -> None:
+    login_page = client.get("/ui/login")
+    csrf_token = client.cookies.get("csrf_token")
+
+    assert csrf_token
+    assert f'name="csrf_token" value="{csrf_token}"' in login_page.text
+    assert "HttpOnly" in login_page.headers["set-cookie"]
+    assert "SameSite=lax" in login_page.headers["set-cookie"]
+
+    rejected = client.post(
+        "/ui/login",
+        data={"email": "nobody@example.com", "password": "wrong-password"},
+        follow_redirects=False,
+    )
+    assert rejected.status_code == 403
+
+    accepted = client.post(
+        "/ui/login",
+        data={
+            "email": "nobody@example.com",
+            "password": "wrong-password",
+            "csrf_token": csrf_token,
+        },
+        follow_redirects=False,
+    )
+    assert accepted.status_code == 303
+    assert accepted.headers["location"] == "/ui/login?err=auth"
+
+
+def test_cookie_authenticated_api_mutation_requires_csrf_header(
+    client: TestClient,
+) -> None:
+    headers = register_and_login(client, "cookie-csrf@example.com")
+    create_response = client.post(
+        "/tasks",
+        headers=headers,
+        json={"title": "Protected task"},
+    )
+    task_id = create_response.json()["id"]
+    token = headers["Authorization"].removeprefix("Bearer ")
+    client.cookies.set("access_token", token)
+
+    rejected = client.patch(
+        f"/tasks/{task_id}",
+        json={"status": "done"},
+    )
+    assert rejected.status_code == 403
+
+    csrf_token = client.cookies.get("csrf_token")
+    accepted = client.patch(
+        f"/tasks/{task_id}",
+        headers={"X-CSRF-Token": csrf_token},
+        json={"status": "done"},
+    )
+    assert accepted.status_code == 200
+    assert accepted.json()["status"] == "done"
+
+
+def test_login_is_temporarily_blocked_after_repeated_failures(
+    client: TestClient,
+) -> None:
+    credentials = {"email": "rate-limit@example.com", "password": "wrong-password"}
+
+    for _ in range(settings.login_rate_limit_attempts - 1):
+        response = client.post("/auth/login", json=credentials)
+        assert response.status_code == 401
+
+    blocked = client.post("/auth/login", json=credentials)
+
+    assert blocked.status_code == 429
+    assert int(blocked.headers["retry-after"]) > 0
+
+
+def test_avatar_rejects_content_that_does_not_match_image_type(
+    client: TestClient,
+) -> None:
+    disguised_svg = base64.b64encode(b"<svg><script>alert(1)</script></svg>").decode()
+
+    response = client.post(
+        "/auth/register",
+        json={
+            "email": "invalid-avatar@example.com",
+            "password": "strong-password",
+            "avatar_base64": f"data:image/png;base64,{disguised_svg}",
+        },
+    )
+
+    assert response.status_code == 422

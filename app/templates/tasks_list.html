@@ -81,6 +81,7 @@
                 Редактировать
               </a>
               <form action="/ui/tasks/{{ item.task.id }}/delete" method="post" onsubmit="return confirm('Удалить задачу «{{ item.task.title }}»?');">
+                <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
                 <input type="hidden" name="return_to" value="/ui/tasks{% if task_filter != 'all' %}?filter={{ task_filter }}{% endif %}">
                 <button type="submit">
                   <svg class="icon" aria-hidden="true"><use href="#icon-trash"></use></svg>
@@ -145,7 +146,10 @@
         try {
           const response = await fetch(`/tasks/${button.dataset.taskStatusToggle}`, {
             method: "PATCH",
-            headers: {"Content-Type": "application/json"},
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content,
+            },
             body: JSON.stringify({status: nextStatus}),
           });
           if (!response.ok) throw new Error("task update failed");

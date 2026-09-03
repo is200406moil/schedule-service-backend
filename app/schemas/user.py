@@ -1,6 +1,8 @@
 from datetime import date
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+from app.core.avatar import validate_avatar_data_url
 
 
 class UserCreate(BaseModel):
@@ -13,6 +15,8 @@ class UserCreate(BaseModel):
     group_name: str | None = Field(default=None, max_length=64)
     avatar_base64: str | None = None
 
+    _validate_avatar = field_validator("avatar_base64")(validate_avatar_data_url)
+
 
 class UserUpdate(BaseModel):
     first_name: str | None = Field(default=None, max_length=120)
@@ -21,6 +25,8 @@ class UserUpdate(BaseModel):
     birth_date: date | None = None
     group_name: str | None = Field(default=None, max_length=64)
     avatar_base64: str | None = None
+
+    _validate_avatar = field_validator("avatar_base64")(validate_avatar_data_url)
 
 
 class UserRead(BaseModel):

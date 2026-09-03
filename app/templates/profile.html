@@ -10,6 +10,7 @@
       <p class="page-description">Личные данные, учебная группа и состояние семестра.</p>
     </div>
     <form action="/ui/logout" method="post" class="profile-logout-form">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
       <button type="submit" class="button button-secondary">
         <svg class="icon" aria-hidden="true"><use href="#icon-log-out"></use></svg>
         Выйти
@@ -17,9 +18,17 @@
     </form>
   </header>
 
+  {% if error == "avatar" %}
+  <div class="form-notice form-notice-error" role="alert">
+    <svg class="icon" aria-hidden="true"><use href="#icon-alert-circle"></use></svg>
+    <span>Не удалось загрузить фото. Используйте JPEG, PNG или WebP размером не больше 2 МБ.</span>
+  </div>
+  {% endif %}
+
   <div class="profile-grid">
     <section class="surface profile-identity-card" aria-labelledby="profile-name">
       <form method="post" action="/ui/profile" enctype="multipart/form-data" id="profile-avatar-form">
+        <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
         <div class="profile-avatar-uploader">
           {% if user.avatar_base64 %}
           <img src="{{ user.avatar_base64 }}" alt="Фотография профиля" class="profile-avatar-image" id="profile-avatar-preview">
@@ -32,7 +41,7 @@
             <svg class="icon" aria-hidden="true"><use href="#icon-camera"></use></svg>
             <span class="sr-only">Загрузить новую фотографию</span>
           </label>
-          <input class="sr-only" type="file" name="avatar_file" accept="image/*" id="avatar-input">
+          <input class="sr-only" type="file" name="avatar_file" accept="image/jpeg,image/png,image/webp" id="avatar-input">
         </div>
       </form>
 
@@ -150,6 +159,7 @@
       </button>
     </div>
     <form method="post" action="/ui/profile" class="task-editor-form profile-edit-form" id="profile-edit-form">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
       <div class="task-form-columns">
         <div class="field-group">
           <label for="profile-last-name">Фамилия</label>

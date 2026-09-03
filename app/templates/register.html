@@ -33,9 +33,15 @@
       <svg class="icon" aria-hidden="true"><use href="#icon-alert-circle"></use></svg>
       <span>Пароль должен содержать не меньше 8 символов.</span>
     </div>
+    {% elif error == "avatar" %}
+    <div class="form-notice form-notice-error" role="alert">
+      <svg class="icon" aria-hidden="true"><use href="#icon-alert-circle"></use></svg>
+      <span>Загрузите JPEG, PNG или WebP размером не больше 2 МБ.</span>
+    </div>
     {% endif %}
 
     <form method="post" action="/ui/register" class="auth-form register-form" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
       <fieldset class="auth-form-section">
         <legend><span>1</span>Данные для входа</legend>
         <div class="auth-form-grid">
@@ -94,9 +100,9 @@
             <span class="field-label">Фотография</span>
             <label class="auth-file-input" for="register-avatar">
               <span><svg class="icon" aria-hidden="true"><use href="#icon-upload"></use></svg></span>
-              <span><strong id="avatar-file-name">Выбрать файл</strong><small>JPG или PNG</small></span>
+              <span><strong id="avatar-file-name">Выбрать файл</strong><small>JPEG, PNG или WebP · до 2 МБ</small></span>
             </label>
-            <input class="sr-only" type="file" id="register-avatar" name="avatar_file" accept="image/*">
+            <input class="sr-only" type="file" id="register-avatar" name="avatar_file" accept="image/jpeg,image/png,image/webp">
           </div>
         </div>
       </fieldset>
