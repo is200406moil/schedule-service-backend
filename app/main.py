@@ -53,6 +53,7 @@ async def security_middleware(request: Request, call_next):
         )
     return response
 
+
 app.mount("/static", StaticFiles(directory=str(APP_DIR / "static")), name="static")
 
 app.include_router(auth.router, prefix="/auth", tags=["auth"])

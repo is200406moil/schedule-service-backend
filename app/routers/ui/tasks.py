@@ -32,14 +32,10 @@ def tasks_list(
         "all": len(all_tasks),
         "active": sum(task.status != "done" for task in all_tasks),
         "today": sum(
-            task.status != "done"
-            and task.due_at is not None
-            and task.due_at.date() == today
+            task.status != "done" and task.due_at is not None and task.due_at.date() == today
             for task in all_tasks
         ),
-        "overdue": sum(
-            task.status != "done" and is_overdue(task.due_at) for task in all_tasks
-        ),
+        "overdue": sum(task.status != "done" and is_overdue(task.due_at) for task in all_tasks),
         "done": sum(task.status == "done" for task in all_tasks),
     }
     task_filter = request.query_params.get("filter", "all")
@@ -51,16 +47,10 @@ def tasks_list(
         tasks = [
             task
             for task in all_tasks
-            if task.status != "done"
-            and task.due_at is not None
-            and task.due_at.date() == today
+            if task.status != "done" and task.due_at is not None and task.due_at.date() == today
         ]
     elif task_filter == "overdue":
-        tasks = [
-            task
-            for task in all_tasks
-            if task.status != "done" and is_overdue(task.due_at)
-        ]
+        tasks = [task for task in all_tasks if task.status != "done" and is_overdue(task.due_at)]
     elif task_filter == "done":
         tasks = [task for task in all_tasks if task.status == "done"]
     else:
