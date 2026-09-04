@@ -2,6 +2,12 @@
   const toast = document.getElementById("tasks-toast");
   if (!toast) return;
 
+  document.querySelectorAll("[data-confirm-delete]").forEach((form) => {
+    form.addEventListener("submit", (event) => {
+      if (!window.confirm(form.dataset.confirmDelete)) event.preventDefault();
+    });
+  });
+
   const storedMessage = sessionStorage.getItem("tasks-toast");
   if (storedMessage) {
     sessionStorage.removeItem("tasks-toast");

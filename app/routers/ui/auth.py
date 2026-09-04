@@ -140,13 +140,6 @@ def login_submit(
                 else status.HTTP_401_UNAUTHORIZED
             ),
         )
-    except auth_service.InactiveUserError:
-        return _login_response(
-            request,
-            error="inactive",
-            email=submitted_email,
-            status_code=status.HTTP_403_FORBIDDEN,
-        )
     login_rate_limiter.reset(rate_limit_key)
     token = auth_service.create_access_token_for_user(user)
     return _cookie_response(token, location="/ui")

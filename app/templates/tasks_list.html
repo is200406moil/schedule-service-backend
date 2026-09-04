@@ -81,7 +81,7 @@
                 <svg class="icon" aria-hidden="true"><use href="#icon-pencil"></use></svg>
                 Редактировать
               </a>
-              <form action="/ui/tasks/{{ item.task.id }}/delete" method="post" onsubmit="return confirm('Удалить задачу «{{ item.task.title }}»?');">
+              <form action="/ui/tasks/{{ item.task.id }}/delete" method="post" data-confirm-delete="Удалить задачу «{{ item.task.title }}»?">
                 <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
                 <input type="hidden" name="return_to" value="/ui/tasks{% if task_filter != 'all' %}?filter={{ task_filter }}{% endif %}">
                 <button type="submit">
@@ -128,5 +128,5 @@
 <div class="toast" id="tasks-toast" role="status" aria-live="polite"></div>
 {% endblock %}
 {% block scripts %}
-<script src="/static/tasks.js?v=1" defer></script>
+<script src="/static/tasks.js?v=2" defer></script>
 {% endblock %}

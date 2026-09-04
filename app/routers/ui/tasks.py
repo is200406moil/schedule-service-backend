@@ -1,7 +1,8 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, Request, status
 from fastapi.responses import RedirectResponse
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_303_SEE_OTHER
 
@@ -9,7 +10,7 @@ from app.core.config import settings
 from app.core.csrf import validate_csrf_token
 from app.core.deps import get_current_user_optional, get_db
 from app.core.time import datetime_local_value, moscow_date
-from app.models import User
+from app.models import Task, User
 from app.schemas.task import TaskCreate, TaskUpdate
 from app.services import task_service
 from app.web.forms import login_redirect, parse_due_at, safe_ui_return
@@ -17,6 +18,47 @@ from app.web.presentation import is_overdue, moscow_today, task_sections
 from app.web.templates import templates
 
 router = APIRouter()
+
+
+def _task_form_values(task: Task | None = None) -> dict[str, str | bool]:
+    return {
+        "title": task.title if task else "",
+        "body": (task.body or "") if task else "",
+        "due_at": datetime_local_value(task.due_at) if task else "",
+        "subject": (task.subject or "") if task else "",
+        "status_done": bool(task and task.status == "done"),
+    }
+
+
+def _clean_optional(value: str | None) -> str | None:
+    cleaned = value.strip() if value else ""
+    return cleaned or None
+
+
+def _task_form_response(
+    request: Request,
+    user: User,
+    *,
+    task: Task | None,
+    heading: str,
+    return_to: str,
+    form_values: dict[str, str | bool] | None = None,
+    error: str | None = None,
+    status_code: int = status.HTTP_200_OK,
+):
+    return templates.TemplateResponse(
+        request=request,
+        name="task_form.html",
+        context={
+            "user": user,
+            "task": task,
+            "heading": heading,
+            "return_to": return_to,
+            "form_values": form_values or _task_form_values(task),
+            "error": error,
+        },
+        status_code=status_code,
+    )
 
 
 @router.get("/tasks")
@@ -74,16 +116,12 @@ def task_new_form(
 ):
     if user is None:
         return login_redirect()
-    return templates.TemplateResponse(
-        request=request,
-        name="task_form.html",
-        context={
-            "user": user,
-            "task": None,
-            "task_due_value": "",
-            "heading": "Новая задача",
-            "return_to": safe_ui_return(request.query_params.get("return_to")),
-        },
+    return _task_form_response(
+        request,
+        user,
+        task=None,
+        heading="Новая задача",
+        return_to=safe_ui_return(request.query_params.get("return_to")),
     )
 
 
@@ -103,17 +141,36 @@ def task_new_submit(
     validate_csrf_token(request, csrf_token, settings.secret_key)
     if user is None:
         return login_redirect()
-    body_clean = None if body is None or body.strip() == "" else body.strip()
-    data = TaskCreate(
-        title=title.strip(),
-        body=body_clean,
-        status="done" if status_done else "todo",
-        due_at=parse_due_at(due_at),
-        subject=subject.strip() if subject else None,
-    )
+    return_path = safe_ui_return(return_to)
+    form_values: dict[str, str | bool] = {
+        "title": title,
+        "body": body or "",
+        "due_at": due_at or "",
+        "subject": subject or "",
+        "status_done": bool(status_done),
+    }
+    try:
+        data = TaskCreate(
+            title=title.strip(),
+            body=_clean_optional(body),
+            status="done" if status_done else "todo",
+            due_at=parse_due_at(due_at),
+            subject=_clean_optional(subject),
+        )
+    except (ValidationError, ValueError):
+        return _task_form_response(
+            request,
+            user,
+            task=None,
+            heading="Новая задача",
+            return_to=return_path,
+            form_values=form_values,
+            error="invalid",
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        )
     task_service.create_task(db, user, data)
     return RedirectResponse(
-        url=safe_ui_return(return_to),
+        url=return_path,
         status_code=HTTP_303_SEE_OTHER,
     )
 
@@ -130,16 +187,12 @@ def task_edit_form(
     task = task_service.find_task(db, user, task_id)
     if task is None:
         return RedirectResponse(url="/ui/tasks", status_code=HTTP_303_SEE_OTHER)
-    return templates.TemplateResponse(
-        request=request,
-        name="task_form.html",
-        context={
-            "user": user,
-            "task": task,
-            "task_due_value": datetime_local_value(task.due_at),
-            "heading": "Редактировать задачу",
-            "return_to": safe_ui_return(request.query_params.get("return_to")),
-        },
+    return _task_form_response(
+        request,
+        user,
+        task=task,
+        heading="Редактировать задачу",
+        return_to=safe_ui_return(request.query_params.get("return_to")),
     )
 
 
@@ -161,20 +214,40 @@ def task_edit_submit(
     validate_csrf_token(request, csrf_token, settings.secret_key)
     if user is None:
         return login_redirect()
-    if task_service.find_task(db, user, task_id) is None:
+    task = task_service.find_task(db, user, task_id)
+    if task is None:
         return RedirectResponse(url="/ui/tasks", status_code=HTTP_303_SEE_OTHER)
-    body_clean = None if body is None or body.strip() == "" else body.strip()
-    due: datetime | None = None if clear_due_at else parse_due_at(due_at)
-    data = TaskUpdate(
-        title=title.strip(),
-        body=body_clean,
-        status="done" if status_done else "todo",
-        due_at=due,
-        subject=subject.strip() if subject else None,
-    )
+    return_path = safe_ui_return(return_to)
+    form_values = {
+        "title": title,
+        "body": body or "",
+        "due_at": "" if clear_due_at else due_at or "",
+        "subject": subject or "",
+        "status_done": bool(status_done),
+    }
+    try:
+        due: datetime | None = None if clear_due_at else parse_due_at(due_at)
+        data = TaskUpdate(
+            title=title.strip(),
+            body=_clean_optional(body),
+            status="done" if status_done else "todo",
+            due_at=due,
+            subject=_clean_optional(subject),
+        )
+    except (ValidationError, ValueError):
+        return _task_form_response(
+            request,
+            user,
+            task=task,
+            heading="Редактировать задачу",
+            return_to=return_path,
+            form_values=form_values,
+            error="invalid",
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        )
     task_service.update_task(db, user, task_id, data)
     return RedirectResponse(
-        url=safe_ui_return(return_to),
+        url=return_path,
         status_code=HTTP_303_SEE_OTHER,
     )
 

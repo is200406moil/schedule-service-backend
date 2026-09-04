@@ -1,8 +1,14 @@
 import base64
 
+import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
+from app.models import User
+from app.repositories import user_repository
+from app.services import auth_service
 
 
 def test_public_auth_pages_render_new_forms(client: TestClient) -> None:
@@ -160,6 +166,50 @@ def test_login_is_temporarily_blocked_after_repeated_failures(
 
     assert blocked.status_code == 429
     assert int(blocked.headers["retry-after"]) > 0
+
+
+def test_inactive_account_uses_the_generic_login_error(
+    client: TestClient,
+    database_session_factory: sessionmaker[Session],
+) -> None:
+    credentials = {"email": "inactive@example.com", "password": "strong-password"}
+    assert client.post("/auth/register", json=credentials).status_code == 201
+    with database_session_factory() as db:
+        user = user_repository.get_by_email(db, credentials["email"])
+        assert user is not None
+        user.is_active = False
+        db.commit()
+
+    api_response = client.post("/auth/login", json=credentials)
+    assert api_response.status_code == 401
+    assert api_response.json()["detail"] == "Incorrect email or password"
+
+    client.get("/ui/login")
+    web_response = client.post(
+        "/ui/login",
+        data={**credentials, "csrf_token": client.cookies.get("csrf_token")},
+    )
+    assert web_response.status_code == 401
+    assert "Проверьте почту и пароль" in web_response.text
+    assert "учётная запись отключена" not in web_response.text
+
+
+def test_registration_rolls_back_a_unique_constraint_race(
+    database_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    registration = auth_service.RegistrationData(
+        email="race@example.com",
+        password="strong-password",
+    )
+    with database_session_factory() as db:
+        auth_service.register_user(db, registration)
+        monkeypatch.setattr(user_repository, "get_by_email", lambda *_: None)
+
+        with pytest.raises(auth_service.EmailAlreadyRegisteredError):
+            auth_service.register_user(db, registration)
+
+        assert db.scalar(select(func.count()).select_from(User)) == 1
 
 
 def test_avatar_rejects_content_that_does_not_match_image_type(

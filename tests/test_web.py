@@ -143,6 +143,49 @@ def test_profile_form_rejects_invalid_date_without_server_error(
     assert client.get("/auth/me", headers=headers).json()["first_name"] is None
 
 
+def test_task_forms_reject_invalid_values_without_losing_input(
+    client: TestClient,
+) -> None:
+    headers = register_and_login(client, "task-form-validation@example.com")
+    client.get("/ui/tasks/new", headers=headers)
+    csrf_token = client.cookies.get("csrf_token")
+
+    invalid_create = client.post(
+        "/ui/tasks/new",
+        headers=headers,
+        data={
+            "title": "Подготовить отчёт",
+            "body": "Черновик описания",
+            "due_at": "not-a-date",
+            "subject": "Backend",
+            "csrf_token": csrf_token,
+        },
+    )
+
+    assert invalid_create.status_code == 422
+    assert "Проверьте название, срок и длину заполненных полей" in invalid_create.text
+    assert 'value="Подготовить отчёт"' in invalid_create.text
+    assert "Черновик описания" in invalid_create.text
+    assert 'value="not-a-date"' in invalid_create.text
+    assert client.get("/tasks", headers=headers).json() == []
+
+    created = client.post("/tasks", headers=headers, json={"title": "Исходное название"})
+    task_id = created.json()["id"]
+    invalid_edit = client.post(
+        f"/ui/tasks/{task_id}/edit",
+        headers=headers,
+        data={
+            "title": "   ",
+            "status_done": "1",
+            "csrf_token": csrf_token,
+        },
+    )
+
+    assert invalid_edit.status_code == 422
+    assert 'id="status-done" value="1" checked' in invalid_edit.text
+    assert client.get(f"/tasks/{task_id}", headers=headers).json()["title"] == ("Исходное название")
+
+
 def test_web_pages_load_external_page_assets(client: TestClient) -> None:
     headers = register_and_login(client, "external-assets@example.com")
 
@@ -183,7 +226,8 @@ def test_web_pages_load_external_page_assets(client: TestClient) -> None:
     assert '<script src="/static/dashboard.js?v=1" defer></script>' in dashboard.text
     assert 'id="calendar-data" type="application/json"' in calendar.text
     assert '<script src="/static/calendar.js?v=1" defer></script>' in calendar.text
-    assert '<script src="/static/tasks.js?v=1" defer></script>' in tasks.text
+    assert '<script src="/static/tasks.js?v=2" defer></script>' in tasks.text
+    assert "onsubmit=" not in tasks.text
     assert task_form.text.count('class="required-label"') == 1
     assert 'id="task-form-data" type="application/json"' in task_form.text
     assert '<script src="/static/autocomplete.js?v=1" defer></script>' in task_form.text

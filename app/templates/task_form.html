@@ -15,6 +15,12 @@
   </header>
 
   <section class="surface task-editor">
+    {% if error == "invalid" %}
+    <div class="form-notice form-notice-error" role="alert">
+      <svg class="icon" aria-hidden="true"><use href="#icon-alert-circle"></use></svg>
+      <span>Проверьте название, срок и длину заполненных полей.</span>
+    </div>
+    {% endif %}
     <form method="post" class="task-editor-form" id="task-form"
       {% if task %}
       action="/ui/tasks/{{ task.id }}/edit"
@@ -35,14 +41,14 @@
           maxlength="500"
           autofocus
           placeholder="Например, подготовить отчёт по курсовой"
-          value="{{ task.title if task else '' }}"
+          value="{{ form_values.title }}"
         >
         <p class="field-hint">Коротко сформулируйте результат, который нужно получить.</p>
       </div>
 
       <div class="field-group field-full">
         <label for="task-body">Описание <span>необязательно</span></label>
-        <textarea name="body" id="task-body" rows="5" placeholder="Добавьте детали, ссылку или небольшой план действий">{{ task.body if task and task.body else '' }}</textarea>
+        <textarea name="body" id="task-body" rows="5" placeholder="Добавьте детали, ссылку или небольшой план действий">{{ form_values.body }}</textarea>
       </div>
 
       <div class="task-form-columns">
@@ -54,7 +60,7 @@
               type="datetime-local"
               name="due_at"
               id="due-at"
-              value="{{ task_due_value }}"
+              value="{{ form_values.due_at }}"
             >
           </div>
           <p class="field-hint">Оставьте пустым, если точной даты нет.</p>
@@ -69,7 +75,7 @@
               name="subject"
               id="task-subject"
               maxlength="255"
-              value="{{ task.subject if task else '' }}"
+              value="{{ form_values.subject }}"
               placeholder="Начните вводить название"
               autocomplete="off"
             >
@@ -85,7 +91,7 @@
           <strong>Задача выполнена</strong>
           <small>Она переместится в раздел «Выполненные».</small>
         </span>
-        <input type="checkbox" name="status_done" id="status-done" value="1" {% if task.status == 'done' %}checked{% endif %}>
+        <input type="checkbox" name="status_done" id="status-done" value="1" {% if form_values.status_done %}checked{% endif %}>
         <span class="switch" aria-hidden="true"><i></i></span>
       </label>
       {% endif %}

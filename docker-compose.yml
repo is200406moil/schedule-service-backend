@@ -11,6 +11,7 @@ services:
       schedule-api:
         condition: service_healthy
     environment:
+      APP_ENVIRONMENT: ${APP_ENVIRONMENT:-development}
       DATABASE_URL: postgresql+psycopg://user:password@db:5432/student_tasks
       SECRET_KEY: ${SECRET_KEY:-change-me-in-development}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}

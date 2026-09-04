@@ -53,8 +53,6 @@ def login(request: Request, data: LoginRequest, db: Session = Depends(get_db)) -
             status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
         ) from exc
-    except auth_service.InactiveUserError as exc:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="Inactive user") from exc
     login_rate_limiter.reset(rate_limit_key)
     return Token(access_token=auth_service.create_access_token_for_user(user))
 

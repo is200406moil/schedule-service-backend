@@ -11,6 +11,35 @@ from app.core.csrf import CSRF_COOKIE, is_valid_csrf_token, issue_csrf_token
 from app.routers import auth, schedule, tasks, ui
 
 APP_DIR = Path(__file__).resolve().parent
+APP_CONTENT_SECURITY_POLICY = (
+    "default-src 'self'; "
+    "script-src 'self'; "
+    "style-src 'self'; "
+    "img-src 'self' data:; "
+    "connect-src 'self'; "
+    "font-src 'self'; "
+    "base-uri 'self'; "
+    "frame-ancestors 'none'; "
+    "form-action 'self'; "
+    "object-src 'none'"
+)
+DOCS_CONTENT_SECURITY_POLICY = (
+    "default-src 'self'; "
+    "script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
+    "style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
+    "img-src 'self' data: https://fastapi.tiangolo.com; "
+    "connect-src 'self'; "
+    "base-uri 'self'; "
+    "frame-ancestors 'none'; "
+    "form-action 'self'; "
+    "object-src 'none'"
+)
+
+
+def content_security_policy(path: str) -> str:
+    if path in {"/docs", "/redoc", "/docs/oauth2-redirect"}:
+        return DOCS_CONTENT_SECURITY_POLICY
+    return APP_CONTENT_SECURITY_POLICY
 
 
 @asynccontextmanager
@@ -61,7 +90,7 @@ async def security_middleware(request: Request, call_next):
     )
     response.headers.setdefault(
         "Content-Security-Policy",
-        "base-uri 'self'; frame-ancestors 'none'; form-action 'self'; object-src 'none'",
+        content_security_policy(request.url.path),
     )
     if settings.cookie_secure:
         response.headers.setdefault(

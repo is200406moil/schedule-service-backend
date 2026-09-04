@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import date
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -9,6 +10,7 @@ from app.models import User
 from app.repositories import user_repository
 
 MIN_PASSWORD_LENGTH = 8
+_DUMMY_PASSWORD_HASH = hash_password("not-a-real-account-password")
 
 
 class EmailAlreadyRegisteredError(Exception):
@@ -16,10 +18,6 @@ class EmailAlreadyRegisteredError(Exception):
 
 
 class InvalidCredentialsError(Exception):
-    pass
-
-
-class InactiveUserError(Exception):
     pass
 
 
@@ -56,25 +54,29 @@ def register_user(db: Session, data: RegistrationData) -> User:
     email = normalize_email(data.email)
     if user_repository.get_by_email(db, email) is not None:
         raise EmailAlreadyRegisteredError
-    return user_repository.create(
-        db,
-        email=email,
-        password_hash=hash_password(data.password),
-        first_name=_clean_optional(data.first_name),
-        last_name=_clean_optional(data.last_name),
-        patronymic=_clean_optional(data.patronymic),
-        birth_date=data.birth_date,
-        group_name=_clean_optional(data.group_name),
-        avatar_base64=data.avatar_base64,
-    )
+    try:
+        return user_repository.create(
+            db,
+            email=email,
+            password_hash=hash_password(data.password),
+            first_name=_clean_optional(data.first_name),
+            last_name=_clean_optional(data.last_name),
+            patronymic=_clean_optional(data.patronymic),
+            birth_date=data.birth_date,
+            group_name=_clean_optional(data.group_name),
+            avatar_base64=data.avatar_base64,
+        )
+    except IntegrityError as exc:
+        db.rollback()
+        raise EmailAlreadyRegisteredError from exc
 
 
 def authenticate_user(db: Session, email: str, password: str) -> User:
     user = user_repository.get_by_email(db, normalize_email(email))
-    if user is None or not verify_password(password, user.password_hash):
+    password_hash = user.password_hash if user else _DUMMY_PASSWORD_HASH
+    password_matches = verify_password(password, password_hash)
+    if user is None or not password_matches or not user.is_active:
         raise InvalidCredentialsError
-    if not user.is_active:
-        raise InactiveUserError
     return user
 
 
