@@ -72,6 +72,8 @@ jobs:
     timeout-minutes: 15
 
     env:
+      APP_ENVIRONMENT: production
+      COOKIE_SECURE: "true"
       SECRET_KEY: ci-only-secret-with-at-least-32-characters
 
     steps:
@@ -85,6 +87,7 @@ jobs:
       - name: Verify running services
         run: |
           curl --fail --show-error --retry 5 --retry-delay 2 http://localhost:8000/health
+          curl --fail --show-error --retry 5 --retry-delay 2 http://localhost:8000/ready
           curl --fail --show-error --retry 5 --retry-delay 2 http://localhost:5000/health
           curl --fail --show-error --retry 5 --retry-delay 2 http://localhost:8000/ui/login > /dev/null
       - name: Show container logs on failure

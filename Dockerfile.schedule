@@ -18,8 +18,13 @@ COPY --from=schedule-source /schedule-source/requirements.txt ./
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
+RUN addgroup --system app \
+    && adduser --system --ingroup app app
+
 COPY --from=schedule-source /schedule-source/app ./app
 
 EXPOSE 5000
+
+USER app
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5000"]

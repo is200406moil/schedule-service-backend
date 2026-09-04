@@ -10,6 +10,9 @@ COPY requirements.lock ./
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.lock
 
+RUN addgroup --system app \
+    && adduser --system --ingroup app app
+
 COPY alembic ./alembic
 COPY alembic.ini ./alembic.ini
 COPY app ./app
@@ -19,5 +22,7 @@ RUN sed -i 's/\r$//' ./prestart.sh \
     && chmod +x ./prestart.sh
 
 EXPOSE 8000
+
+USER app
 
 CMD ["bash", "-c", "./prestart.sh && uvicorn app.main:app --host 0.0.0.0 --port 8000"]

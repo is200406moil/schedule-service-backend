@@ -1,8 +1,11 @@
 import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.config import DEVELOPMENT_SECRET, Settings
+from app.core.deps import get_db
+from app.main import app
 
 
 def test_healthcheck(client: TestClient) -> None:
@@ -16,6 +19,33 @@ def test_healthcheck(client: TestClient) -> None:
     assert "default-src 'self'" in policy
     assert "script-src 'self'" in policy
     assert "frame-ancestors 'none'" in policy
+
+
+def test_readiness_check_confirms_database_connection(client: TestClient) -> None:
+    response = client.get("/ready")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ready"}
+
+
+def test_readiness_check_reports_database_failure(client: TestClient) -> None:
+    original_override = app.dependency_overrides[get_db]
+
+    class UnavailableDatabase:
+        def execute(self, _query):
+            raise SQLAlchemyError("database unavailable")
+
+    def unavailable_database():
+        yield UnavailableDatabase()
+
+    app.dependency_overrides[get_db] = unavailable_database
+    try:
+        response = client.get("/ready")
+    finally:
+        app.dependency_overrides[get_db] = original_override
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Database is unavailable"}
 
 
 def test_api_documentation_uses_a_scoped_content_security_policy(

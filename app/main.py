@@ -1,13 +1,17 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from app.clients import ScheduleClient
 from app.core.config import settings
 from app.core.csrf import CSRF_COOKIE, is_valid_csrf_token, issue_csrf_token
+from app.core.deps import get_db
 from app.routers import auth, schedule, tasks, ui
 
 APP_DIR = Path(__file__).resolve().parent
@@ -110,9 +114,23 @@ app.include_router(ui.router)
 
 @app.get("/health", tags=["system"])
 def healthcheck() -> dict[str, str]:
-    """Return a lightweight process health check."""
+    """Return a lightweight liveness check for the application process."""
 
     return {"status": "ok"}
+
+
+@app.get("/ready", tags=["system"])
+def readiness_check(db: Session = Depends(get_db)) -> dict[str, str]:
+    """Confirm that the application can serve requests backed by PostgreSQL."""
+
+    try:
+        db.execute(text("SELECT 1"))
+    except SQLAlchemyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database is unavailable",
+        ) from exc
+    return {"status": "ready"}
 
 
 @app.get("/", include_in_schema=False)
