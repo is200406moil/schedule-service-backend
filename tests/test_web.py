@@ -20,7 +20,7 @@ def test_deadlines_are_stored_as_utc_and_rendered_in_moscow_time() -> None:
     assert datetime_local_value(datetime(2026, 9, 3, 15, 30, tzinfo=UTC)) == ("2026-09-03T18:30")
 
 
-def test_calendar_renders_with_configured_schedule_url(client: TestClient) -> None:
+def test_calendar_uses_internal_schedule_proxy(client: TestClient) -> None:
     headers = register_and_login(client, "calendar@example.com")
     client.post(
         "/tasks",
@@ -35,11 +35,11 @@ def test_calendar_renders_with_configured_schedule_url(client: TestClient) -> No
     response = client.get("/ui/calendar", headers=headers)
 
     assert response.status_code == 200
-    assert '"http://localhost:5000/api/schedule"' in response.text
+    assert '"scheduleApi": "/schedule"' in response.text
     assert '"title": "Calendar task"' in response.text
     assert '"due_at": "2026-09-03T18:30"' in response.text
     assert '<script src="/static/calendar.js?v=1" defer></script>' in response.text
-    assert "http://:5000" not in response.text
+    assert "localhost:5000/api/schedule" not in response.text
 
 
 def test_profile_shows_progress_and_only_upcoming_active_tasks(

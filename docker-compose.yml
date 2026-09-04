@@ -15,7 +15,8 @@ services:
       SECRET_KEY: ${SECRET_KEY:-change-me-in-development}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
-      SCHEDULE_API_BASE_URL: ${SCHEDULE_API_BASE_URL:-http://localhost:5000/api/schedule}
+      SCHEDULE_API_BASE_URL: ${SCHEDULE_API_BASE_URL:-http://schedule-api:5000/api/schedule}
+      SCHEDULE_API_TIMEOUT_SECONDS: ${SCHEDULE_API_TIMEOUT_SECONDS:-5}
       SCHEDULE_API_DOCS_URL: ${SCHEDULE_API_DOCS_URL:-http://localhost:5000/docs}
     ports:
       - "8000:8000"

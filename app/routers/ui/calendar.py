@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
 from app.core.deps import get_current_user_optional, get_db
 from app.core.time import datetime_local_value
 from app.models import User
@@ -37,7 +36,7 @@ def calendar_page(
         context={
             "user": user,
             "calendar_data": {
-                "scheduleApi": settings.schedule_api_base_url.rstrip("/"),
+                "scheduleApi": "/schedule",
                 "group": user.group_name or "",
                 "tasks": calendar_tasks,
                 "initialDate": request.query_params.get("date"),

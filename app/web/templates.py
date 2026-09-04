@@ -8,6 +8,6 @@ TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 templates.env.globals.update(
-    schedule_api_base_url=settings.schedule_api_base_url.rstrip("/"),
+    schedule_proxy_base_url="/schedule",
     schedule_api_docs_url=settings.schedule_api_docs_url,
 )

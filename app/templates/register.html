@@ -117,6 +117,6 @@
   </section>
 </div>
 
-<script type="application/json" id="auth-data">{{ {"groupsApi": schedule_api_base_url ~ "/groups"} | tojson }}</script>
+<script type="application/json" id="auth-data">{{ {"groupsApi": schedule_proxy_base_url ~ "/groups"} | tojson }}</script>
 <script src="/static/auth.js?v=1" defer></script>
 {% endblock %}

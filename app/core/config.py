@@ -1,3 +1,4 @@
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -17,6 +18,7 @@ class Settings(BaseSettings):
     login_rate_limit_attempts: int = 5
     login_rate_limit_window_seconds: int = 300
     schedule_api_base_url: str = "http://localhost:5000/api/schedule"
+    schedule_api_timeout_seconds: float = Field(default=5.0, gt=0, le=30)
     schedule_api_docs_url: str = "http://localhost:5000/docs"
 
 

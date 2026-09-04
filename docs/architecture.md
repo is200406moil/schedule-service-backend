@@ -24,6 +24,7 @@ flowchart LR
     Service[Services]
     Repository[Repositories]
     DB[(PostgreSQL)]
+    ScheduleClient[ScheduleClient]
     ScheduleAPI[RTU MIREA Schedule API]
     ScheduleDB[(MongoDB cache)]
     Source[Public schedule-of API]
@@ -32,7 +33,8 @@ flowchart LR
     Router --> Service
     Service --> Repository
     Repository --> DB
-    Client --> ScheduleAPI
+    Router --> ScheduleClient
+    ScheduleClient --> ScheduleAPI
     ScheduleAPI --> ScheduleDB
     Source --> ScheduleAPI
 ```
@@ -41,7 +43,7 @@ flowchart LR
 
 REST API и HTML-маршруты используют общий сервисный слой. Поэтому правила регистрации, входа, обновления профиля и доступа к задачам не дублируются в разных интерфейсах. Веб-маршруты разделены по функциональности в `app/routers/ui`, а подготовка данных для шаблонов находится в `app/web`.
 
-Календарь загружает расписание группы из отдельного API. Docker Compose поднимает этот сервис вместе с MongoDB и один раз запускает наполнение кэша. Адрес API передаётся в HTML из серверной конфигурации, поэтому он не зашит в шаблон. Ошибка внешнего сервиса не блокирует сам календарь и работу с задачами.
+Календарь получает расписание группы через маршруты основного приложения. `ScheduleClient` обращается к отдельному API по внутреннему адресу, проверяет структуру ответа и ограничивает время ожидания. Браузеру не нужно знать адрес второго сервиса или обращаться к нему напрямую. Docker Compose поднимает Schedule API вместе с MongoDB и один раз запускает наполнение кэша. Ошибка внешнего сервиса превращается в контролируемый ответ основного API и не блокирует работу с задачами.
 
 ## Аутентификация
 

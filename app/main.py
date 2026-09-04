@@ -1,19 +1,36 @@
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.clients import ScheduleClient
 from app.core.config import settings
 from app.core.csrf import CSRF_COOKIE, is_valid_csrf_token, issue_csrf_token
-from app.routers import auth, tasks, ui
+from app.routers import auth, schedule, tasks, ui
 
 APP_DIR = Path(__file__).resolve().parent
+
+
+@asynccontextmanager
+async def lifespan(application: FastAPI):
+    schedule_client = ScheduleClient(
+        settings.schedule_api_base_url,
+        settings.schedule_api_timeout_seconds,
+    )
+    application.state.schedule_client = schedule_client
+    try:
+        yield
+    finally:
+        await schedule_client.close()
+
 
 app = FastAPI(
     title="Student tasks & deadlines",
     version="0.1.0",
     description="REST API и минимальный веб-интерфейс (Jinja2): JWT, CRUD задач с due_at.",
+    lifespan=lifespan,
 )
 
 
@@ -58,6 +75,7 @@ app.mount("/static", StaticFiles(directory=str(APP_DIR / "static")), name="stati
 
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(tasks.router, prefix="/tasks", tags=["tasks"])
+app.include_router(schedule.router, prefix="/schedule", tags=["schedule"])
 app.include_router(ui.router)
 
 

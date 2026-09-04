@@ -99,6 +99,6 @@
   </section>
 </div>
 
-<script id="task-form-data" type="application/json">{{ {"subjectsApi": schedule_api_base_url, "userGroup": user.group_name or ""} | tojson }}</script>
+<script id="task-form-data" type="application/json">{{ {"subjectsApi": schedule_proxy_base_url, "userGroup": user.group_name or ""} | tojson }}</script>
 <script src="/static/task_form.js?v=1" defer></script>
 {% endblock %}
