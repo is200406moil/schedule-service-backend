@@ -66,6 +66,83 @@ def test_profile_shows_progress_and_only_upcoming_active_tasks(
     assert '<script src="/static/profile.js?v=1" defer></script>' in response.text
 
 
+def test_profile_details_can_be_cleared_without_avatar_form_overwriting_them(
+    client: TestClient,
+) -> None:
+    headers = register_and_login(client, "profile-fields@example.com")
+    updated = client.patch(
+        "/auth/me",
+        headers=headers,
+        json={
+            "first_name": "Анна",
+            "last_name": "Иванова",
+            "patronymic": "Игоревна",
+            "birth_date": "2004-04-20",
+            "group_name": "ИКБО-14-23",
+        },
+    )
+    assert updated.status_code == 200
+
+    profile = client.get("/ui/profile", headers=headers)
+    csrf_token = client.cookies.get("csrf_token")
+    assert profile.status_code == 200
+    avatar_only = client.post(
+        "/ui/profile",
+        headers=headers,
+        data={"form_kind": "avatar", "csrf_token": csrf_token},
+        follow_redirects=False,
+    )
+    assert avatar_only.status_code == 303
+    assert client.get("/auth/me", headers=headers).json()["first_name"] == "Анна"
+
+    cleared = client.post(
+        "/ui/profile",
+        headers=headers,
+        data={
+            "form_kind": "details",
+            "first_name": "",
+            "last_name": "",
+            "patronymic": "",
+            "birth_date": "",
+            "group_name": "",
+            "csrf_token": csrf_token,
+        },
+        follow_redirects=False,
+    )
+
+    assert cleared.status_code == 303
+    user = client.get("/auth/me", headers=headers).json()
+    assert user["first_name"] is None
+    assert user["last_name"] is None
+    assert user["patronymic"] is None
+    assert user["birth_date"] is None
+    assert user["group_name"] is None
+
+
+def test_profile_form_rejects_invalid_date_without_server_error(
+    client: TestClient,
+) -> None:
+    headers = register_and_login(client, "profile-validation@example.com")
+    client.get("/ui/profile", headers=headers)
+    csrf_token = client.cookies.get("csrf_token")
+
+    response = client.post(
+        "/ui/profile",
+        headers=headers,
+        data={
+            "form_kind": "details",
+            "first_name": "Анна",
+            "birth_date": "2025-99-99",
+            "csrf_token": csrf_token,
+        },
+    )
+
+    assert response.status_code == 422
+    assert "одно из полей заполнено неверно" in response.text
+    assert '"openEdit": true' in response.text
+    assert client.get("/auth/me", headers=headers).json()["first_name"] is None
+
+
 def test_web_pages_load_external_page_assets(client: TestClient) -> None:
     headers = register_and_login(client, "external-assets@example.com")
 

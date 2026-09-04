@@ -24,7 +24,7 @@
       <svg class="icon" aria-hidden="true"><use href="#icon-alert-circle"></use></svg>
       <span>Аккаунт с такой почтой уже существует.</span>
     </div>
-    {% elif error == "short" %}
+    {% elif error == "short" or error == "password" %}
     <div class="form-notice form-notice-error" role="alert">
       <svg class="icon" aria-hidden="true"><use href="#icon-alert-circle"></use></svg>
       <span>Пароль должен содержать не меньше 8 символов.</span>
@@ -33,6 +33,21 @@
     <div class="form-notice form-notice-error" role="alert">
       <svg class="icon" aria-hidden="true"><use href="#icon-alert-circle"></use></svg>
       <span>Загрузите JPEG, PNG или WebP размером не больше 2 МБ.</span>
+    </div>
+    {% elif error == "email" %}
+    <div class="form-notice form-notice-error" role="alert">
+      <svg class="icon" aria-hidden="true"><use href="#icon-alert-circle"></use></svg>
+      <span>Введите корректный адрес электронной почты.</span>
+    </div>
+    {% elif error == "date" %}
+    <div class="form-notice form-notice-error" role="alert">
+      <svg class="icon" aria-hidden="true"><use href="#icon-alert-circle"></use></svg>
+      <span>Проверьте дату рождения.</span>
+    </div>
+    {% elif error == "invalid" %}
+    <div class="form-notice form-notice-error" role="alert">
+      <svg class="icon" aria-hidden="true"><use href="#icon-alert-circle"></use></svg>
+      <span>Проверьте заполненные поля и попробуйте снова.</span>
     </div>
     {% endif %}
 
@@ -45,7 +60,7 @@
             <label class="required-label" for="register-email">Электронная почта</label>
             <div class="input-with-icon">
               <svg class="icon" aria-hidden="true"><use href="#icon-mail"></use></svg>
-              <input type="email" id="register-email" name="email" required autocomplete="username" placeholder="name@example.com">
+              <input type="email" id="register-email" name="email" value="{{ form_values.email or '' }}" required autocomplete="username" placeholder="name@example.com">
             </div>
           </div>
           <div class="field-group">
@@ -63,19 +78,19 @@
         <div class="auth-form-grid">
           <div class="field-group">
             <label for="register-last-name">Фамилия</label>
-            <input type="text" id="register-last-name" name="last_name" maxlength="120" autocomplete="family-name" placeholder="Иванов">
+            <input type="text" id="register-last-name" name="last_name" value="{{ form_values.last_name or '' }}" maxlength="120" autocomplete="family-name" placeholder="Иванов">
           </div>
           <div class="field-group">
             <label for="register-first-name">Имя</label>
-            <input type="text" id="register-first-name" name="first_name" maxlength="120" autocomplete="given-name" placeholder="Иван">
+            <input type="text" id="register-first-name" name="first_name" value="{{ form_values.first_name or '' }}" maxlength="120" autocomplete="given-name" placeholder="Иван">
           </div>
           <div class="field-group">
             <label for="register-patronymic">Отчество</label>
-            <input type="text" id="register-patronymic" name="patronymic" maxlength="120" placeholder="Иванович">
+            <input type="text" id="register-patronymic" name="patronymic" value="{{ form_values.patronymic or '' }}" maxlength="120" placeholder="Иванович">
           </div>
           <div class="field-group">
             <label for="register-birth-date">Дата рождения</label>
-            <input type="date" id="register-birth-date" name="birth_date" autocomplete="bday">
+            <input type="date" id="register-birth-date" name="birth_date" value="{{ form_values.birth_date or '' }}" autocomplete="bday">
           </div>
         </div>
       </fieldset>
@@ -87,7 +102,7 @@
             <label for="register-group">Учебная группа</label>
             <div class="autocomplete input-with-icon" data-autocomplete="groups">
               <svg class="icon" aria-hidden="true"><use href="#icon-graduation-cap"></use></svg>
-              <input type="text" id="register-group" name="group_name" maxlength="64" placeholder="Например, ИКБО-14-23" autocomplete="off">
+              <input type="text" id="register-group" name="group_name" value="{{ form_values.group_name or '' }}" maxlength="64" placeholder="Например, ИКБО-14-23" autocomplete="off">
               <div class="autocomplete-list"></div>
             </div>
             <p class="field-hint">Нужна для автоматической загрузки расписания.</p>

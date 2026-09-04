@@ -31,6 +31,7 @@
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && modal.classList.contains("open")) closeModal();
   });
+  if (config.openEdit) openModal();
 
   if (avatarInput && avatarForm) {
     avatarInput.addEventListener("change", () => {

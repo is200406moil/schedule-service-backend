@@ -23,12 +23,18 @@
     <svg class="icon" aria-hidden="true"><use href="#icon-alert-circle"></use></svg>
     <span>Не удалось загрузить фото. Используйте JPEG, PNG или WebP размером не больше 2 МБ.</span>
   </div>
+  {% elif error == "invalid" %}
+  <div class="form-notice form-notice-error" role="alert">
+    <svg class="icon" aria-hidden="true"><use href="#icon-alert-circle"></use></svg>
+    <span>Проверьте личные данные: одно из полей заполнено неверно.</span>
+  </div>
   {% endif %}
 
   <div class="profile-grid">
     <section class="surface profile-identity-card" aria-labelledby="profile-name">
       <form method="post" action="/ui/profile" enctype="multipart/form-data" id="profile-avatar-form">
         <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+        <input type="hidden" name="form_kind" value="avatar">
         <div class="profile-avatar-uploader">
           {% if user.avatar_base64 %}
           <img src="{{ user.avatar_base64 }}" alt="Фотография профиля" class="profile-avatar-image" id="profile-avatar-preview">
@@ -160,26 +166,27 @@
     </div>
     <form method="post" action="/ui/profile" class="task-editor-form profile-edit-form" id="profile-edit-form">
       <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+      <input type="hidden" name="form_kind" value="details">
       <div class="task-form-columns">
         <div class="field-group">
           <label for="profile-last-name">Фамилия</label>
-          <input type="text" id="profile-last-name" name="last_name" maxlength="120" value="{{ user.last_name or '' }}" autocomplete="family-name">
+          <input type="text" id="profile-last-name" name="last_name" maxlength="120" value="{{ form_values.last_name }}" autocomplete="family-name">
         </div>
         <div class="field-group">
           <label for="profile-first-name">Имя</label>
-          <input type="text" id="profile-first-name" name="first_name" maxlength="120" value="{{ user.first_name or '' }}" autocomplete="given-name">
+          <input type="text" id="profile-first-name" name="first_name" maxlength="120" value="{{ form_values.first_name }}" autocomplete="given-name">
         </div>
       </div>
       <div class="task-form-columns">
         <div class="field-group">
           <label for="profile-patronymic">Отчество <span>необязательно</span></label>
-          <input type="text" id="profile-patronymic" name="patronymic" maxlength="120" value="{{ user.patronymic or '' }}">
+          <input type="text" id="profile-patronymic" name="patronymic" maxlength="120" value="{{ form_values.patronymic }}">
         </div>
         <div class="field-group">
           <label for="profile-birth-date">Дата рождения</label>
           <div class="input-with-icon">
             <svg class="icon" aria-hidden="true"><use href="#icon-cake"></use></svg>
-            <input type="date" id="profile-birth-date" name="birth_date" value="{% if user.birth_date %}{{ user.birth_date.strftime('%Y-%m-%d') }}{% endif %}">
+            <input type="date" id="profile-birth-date" name="birth_date" value="{{ form_values.birth_date }}">
           </div>
         </div>
       </div>
@@ -187,7 +194,7 @@
         <label for="profile-group-name">Учебная группа</label>
         <div class="autocomplete input-with-icon" data-autocomplete="groups">
           <svg class="icon" aria-hidden="true"><use href="#icon-graduation-cap"></use></svg>
-          <input type="text" id="profile-group-name" name="group_name" maxlength="64" value="{{ user.group_name or '' }}" placeholder="Например, ИКБО-14-23" autocomplete="off">
+          <input type="text" id="profile-group-name" name="group_name" maxlength="64" value="{{ form_values.group_name }}" placeholder="Например, ИКБО-14-23" autocomplete="off">
           <div class="autocomplete-list"></div>
         </div>
         <p class="field-hint">По группе приложение загружает актуальное расписание.</p>
@@ -201,6 +208,6 @@
 </div>
 
 <div class="toast" id="profile-toast" role="status" aria-live="polite"></div>
-<script type="application/json" id="profile-data">{{ {"groupsApi": schedule_proxy_base_url ~ "/groups"} | tojson }}</script>
+<script type="application/json" id="profile-data">{{ {"groupsApi": schedule_proxy_base_url ~ "/groups", "openEdit": open_edit} | tojson }}</script>
 <script src="/static/profile.js?v=1" defer></script>
 {% endblock %}

@@ -80,8 +80,68 @@ def test_html_forms_require_a_valid_csrf_token(client: TestClient) -> None:
         },
         follow_redirects=False,
     )
-    assert accepted.status_code == 303
-    assert accepted.headers["location"] == "/ui/login?err=auth"
+    assert accepted.status_code == 401
+    assert "Проверьте почту и пароль" in accepted.text
+    assert 'value="nobody@example.com"' in accepted.text
+
+
+def test_web_registration_rejects_invalid_values_without_losing_input(
+    client: TestClient,
+) -> None:
+    client.get("/ui/register")
+    csrf_token = client.cookies.get("csrf_token")
+
+    invalid_email = client.post(
+        "/ui/register",
+        data={
+            "email": "not-an-email",
+            "password": "strong-password",
+            "first_name": "Анна",
+            "csrf_token": csrf_token,
+        },
+    )
+
+    assert invalid_email.status_code == 422
+    assert "Введите корректный адрес электронной почты" in invalid_email.text
+    assert 'value="not-an-email"' in invalid_email.text
+    assert 'value="Анна"' in invalid_email.text
+
+    invalid_date = client.post(
+        "/ui/register",
+        data={
+            "email": "valid@example.com",
+            "password": "strong-password",
+            "birth_date": "2025-99-99",
+            "group_name": "ИКБО-14-23",
+            "csrf_token": csrf_token,
+        },
+    )
+
+    assert invalid_date.status_code == 422
+    assert "Проверьте дату рождения" in invalid_date.text
+    assert 'value="ИКБО-14-23"' in invalid_date.text
+
+
+def test_web_registration_duplicate_keeps_non_sensitive_values(
+    client: TestClient,
+) -> None:
+    client.get("/ui/register")
+    csrf_token = client.cookies.get("csrf_token")
+    form = {
+        "email": "duplicate@example.com",
+        "password": "strong-password",
+        "first_name": "Анна",
+        "csrf_token": csrf_token,
+    }
+
+    assert client.post("/ui/register", data=form, follow_redirects=False).status_code == 303
+    duplicate = client.post("/ui/register", data=form)
+
+    assert duplicate.status_code == 409
+    assert "Аккаунт с такой почтой уже существует" in duplicate.text
+    assert 'value="duplicate@example.com"' in duplicate.text
+    assert 'value="Анна"' in duplicate.text
+    assert 'value="strong-password"' not in duplicate.text
 
 
 def test_login_is_temporarily_blocked_after_repeated_failures(

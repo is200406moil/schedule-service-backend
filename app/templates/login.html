@@ -50,6 +50,11 @@
       <svg class="icon" aria-hidden="true"><use href="#icon-alert-circle"></use></svg>
       <span><strong>Слишком много попыток.</strong> Подождите несколько минут и попробуйте снова.</span>
     </div>
+    {% elif error == "email" %}
+    <div class="form-notice form-notice-error" role="alert">
+      <svg class="icon" aria-hidden="true"><use href="#icon-alert-circle"></use></svg>
+      <span>Введите корректный адрес электронной почты.</span>
+    </div>
     {% endif %}
 
     <form method="post" action="/ui/login" class="auth-form">
@@ -58,7 +63,7 @@
         <label class="required-label" for="login-email">Электронная почта</label>
         <div class="input-with-icon">
           <svg class="icon" aria-hidden="true"><use href="#icon-mail"></use></svg>
-          <input type="email" id="login-email" name="email" required autocomplete="username" placeholder="name@example.com">
+          <input type="email" id="login-email" name="email" value="{{ email or '' }}" required autocomplete="username" placeholder="name@example.com">
         </div>
       </div>
       <div class="field-group">

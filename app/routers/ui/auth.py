@@ -1,7 +1,6 @@
-from datetime import datetime
-
-from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile, status
 from fastapi.responses import RedirectResponse
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 from starlette.status import HTTP_303_SEE_OTHER
 
@@ -11,11 +10,57 @@ from app.core.csrf import validate_csrf_token
 from app.core.deps import ACCESS_TOKEN_COOKIE, get_current_user_optional, get_db
 from app.core.rate_limit import login_rate_limit_key, login_rate_limiter
 from app.models import User
+from app.schemas.auth import LoginRequest
+from app.schemas.user import UserCreate
 from app.services import auth_service
 from app.web.forms import encode_avatar_file
 from app.web.templates import templates
 
 router = APIRouter()
+
+
+def _login_response(
+    request: Request,
+    *,
+    error: str | None = None,
+    ok: str | None = None,
+    email: str = "",
+    status_code: int = status.HTTP_200_OK,
+):
+    return templates.TemplateResponse(
+        request=request,
+        name="login.html",
+        context={"user": None, "error": error, "ok": ok, "email": email},
+        status_code=status_code,
+    )
+
+
+def _register_response(
+    request: Request,
+    *,
+    error: str | None = None,
+    form_values: dict[str, str] | None = None,
+    status_code: int = status.HTTP_200_OK,
+):
+    return templates.TemplateResponse(
+        request=request,
+        name="register.html",
+        context={
+            "user": None,
+            "error": error,
+            "form_values": form_values or {},
+        },
+        status_code=status_code,
+    )
+
+
+def _registration_error(exc: ValidationError) -> str:
+    field = exc.errors()[0]["loc"][0]
+    return {
+        "email": "email",
+        "password": "password",
+        "birth_date": "date",
+    }.get(str(field), "invalid")
 
 
 def _cookie_response(token: str, *, location: str) -> RedirectResponse:
@@ -44,14 +89,10 @@ def login_page(
 ):
     if user is not None:
         return RedirectResponse(url="/ui", status_code=HTTP_303_SEE_OTHER)
-    return templates.TemplateResponse(
-        request=request,
-        name="login.html",
-        context={
-            "user": None,
-            "error": request.query_params.get("err"),
-            "ok": request.query_params.get("ok"),
-        },
+    return _login_response(
+        request,
+        error=request.query_params.get("err"),
+        ok=request.query_params.get("ok"),
     )
 
 
@@ -64,26 +105,47 @@ def login_submit(
     csrf_token: str | None = Form(None),
 ):
     validate_csrf_token(request, csrf_token, settings.secret_key)
-    normalized_email = auth_service.normalize_email(email)
+    submitted_email = email.strip()
+    try:
+        credentials = LoginRequest(email=submitted_email, password=password)
+    except ValidationError:
+        return _login_response(
+            request,
+            error="email",
+            email=submitted_email,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        )
+    normalized_email = auth_service.normalize_email(str(credentials.email))
     rate_limit_key = login_rate_limit_key(request, normalized_email)
-    if login_rate_limiter.retry_after(rate_limit_key) is not None:
-        return RedirectResponse(
-            url="/ui/login?err=rate",
-            status_code=HTTP_303_SEE_OTHER,
+    retry_after = login_rate_limiter.retry_after(rate_limit_key)
+    if retry_after is not None:
+        return _login_response(
+            request,
+            error="rate",
+            email=submitted_email,
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         )
     try:
-        user = auth_service.authenticate_user(db, normalized_email, password)
+        user = auth_service.authenticate_user(db, normalized_email, credentials.password)
     except auth_service.InvalidCredentialsError:
         retry_after = login_rate_limiter.record_failure(rate_limit_key)
         error = "rate" if retry_after is not None else "auth"
-        return RedirectResponse(
-            url=f"/ui/login?err={error}",
-            status_code=HTTP_303_SEE_OTHER,
+        return _login_response(
+            request,
+            error=error,
+            email=submitted_email,
+            status_code=(
+                status.HTTP_429_TOO_MANY_REQUESTS
+                if retry_after is not None
+                else status.HTTP_401_UNAUTHORIZED
+            ),
         )
     except auth_service.InactiveUserError:
-        return RedirectResponse(
-            url="/ui/login?err=inactive",
-            status_code=HTTP_303_SEE_OTHER,
+        return _login_response(
+            request,
+            error="inactive",
+            email=submitted_email,
+            status_code=status.HTTP_403_FORBIDDEN,
         )
     login_rate_limiter.reset(rate_limit_key)
     token = auth_service.create_access_token_for_user(user)
@@ -97,11 +159,7 @@ def register_page(
 ):
     if user is not None:
         return RedirectResponse(url="/ui", status_code=HTTP_303_SEE_OTHER)
-    return templates.TemplateResponse(
-        request=request,
-        name="register.html",
-        context={"user": None, "error": request.query_params.get("err")},
-    )
+    return _register_response(request, error=request.query_params.get("err"))
 
 
 @router.post("/register")
@@ -119,34 +177,66 @@ def register_submit(
     csrf_token: str | None = Form(None),
 ):
     validate_csrf_token(request, csrf_token, settings.secret_key)
+    form_values = {
+        "email": email.strip(),
+        "first_name": first_name or "",
+        "last_name": last_name or "",
+        "patronymic": patronymic or "",
+        "birth_date": birth_date or "",
+        "group_name": group_name or "",
+    }
     try:
         avatar_base64 = encode_avatar_file(avatar_file)
     except AvatarValidationError:
-        return RedirectResponse(
-            url="/ui/register?err=avatar",
-            status_code=HTTP_303_SEE_OTHER,
+        return _register_response(
+            request,
+            error="avatar",
+            form_values=form_values,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        )
+    try:
+        data = UserCreate(
+            email=email,
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+            patronymic=patronymic,
+            birth_date=birth_date or None,
+            group_name=group_name,
+            avatar_base64=avatar_base64,
+        )
+    except ValidationError as exc:
+        return _register_response(
+            request,
+            error=_registration_error(exc),
+            form_values=form_values,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         )
     registration = auth_service.RegistrationData(
-        email=email,
-        password=password,
-        first_name=first_name,
-        last_name=last_name,
-        patronymic=patronymic,
-        birth_date=datetime.fromisoformat(birth_date).date() if birth_date else None,
-        group_name=group_name,
-        avatar_base64=avatar_base64,
+        email=str(data.email),
+        password=data.password,
+        first_name=data.first_name,
+        last_name=data.last_name,
+        patronymic=data.patronymic,
+        birth_date=data.birth_date,
+        group_name=data.group_name,
+        avatar_base64=data.avatar_base64,
     )
     try:
         auth_service.register_user(db, registration)
     except auth_service.PasswordTooShortError:
-        return RedirectResponse(
-            url="/ui/register?err=short",
-            status_code=HTTP_303_SEE_OTHER,
+        return _register_response(
+            request,
+            error="password",
+            form_values=form_values,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         )
     except auth_service.EmailAlreadyRegisteredError:
-        return RedirectResponse(
-            url="/ui/register?err=exists",
-            status_code=HTTP_303_SEE_OTHER,
+        return _register_response(
+            request,
+            error="exists",
+            form_values=form_values,
+            status_code=status.HTTP_409_CONFLICT,
         )
     return RedirectResponse(
         url="/ui/login?ok=registered",
