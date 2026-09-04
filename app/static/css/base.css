@@ -553,7 +553,8 @@ h1 { font-size: 1.35rem; margin-top: 0; }
   cursor: pointer;
   font: inherit;
 }
-.autocomplete-item:hover {
+.autocomplete-item:hover,
+.autocomplete-item.active {
   background: #eef2ff;
 }
 .modal {

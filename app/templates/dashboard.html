@@ -105,7 +105,8 @@
   </div>
 </div>
 <div class="toast" id="dashboard-toast" role="status" aria-live="polite"></div>
-
+{% endblock %}
+{% block scripts %}
 <script id="dashboard-data" type="application/json">{{ {"scheduleApi": schedule_proxy_base_url, "group": user.group_name or ""} | tojson }}</script>
 <script src="/static/dashboard.js?v=1" defer></script>
 {% endblock %}

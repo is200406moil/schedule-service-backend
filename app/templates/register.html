@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Регистрация · Мой семестр{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/static/css/auth.css?v=2">{% endblock %}
 {% block content %}
 <div class="auth-layout auth-register-layout">
   <section class="auth-intro auth-register-intro" aria-labelledby="register-intro-title">
@@ -127,7 +128,9 @@
     <p class="auth-switch">Уже есть аккаунт? <a href="/ui/login">Войти</a></p>
   </section>
 </div>
-
+{% endblock %}
+{% block scripts %}
 <script type="application/json" id="auth-data">{{ {"groupsApi": schedule_proxy_base_url ~ "/groups"} | tojson }}</script>
-<script src="/static/auth.js?v=1" defer></script>
+<script src="/static/autocomplete.js?v=1" defer></script>
+<script src="/static/auth.js?v=2" defer></script>
 {% endblock %}

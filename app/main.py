@@ -29,7 +29,7 @@ async def lifespan(application: FastAPI):
 app = FastAPI(
     title="Student tasks & deadlines",
     version="0.1.0",
-    description="REST API и минимальный веб-интерфейс (Jinja2): JWT, CRUD задач с due_at.",
+    description="REST API и веб-приложение для учебного расписания, личных задач и дедлайнов.",
     lifespan=lifespan,
 )
 

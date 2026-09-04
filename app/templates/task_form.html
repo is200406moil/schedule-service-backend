@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ heading }} · Мой семестр{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/static/css/tasks.css?v=1">{% endblock %}
 {% block content %}
 <div class="task-form-page">
   <a class="back-link" href="{{ return_to }}">
@@ -98,7 +99,9 @@
     </form>
   </section>
 </div>
-
+{% endblock %}
+{% block scripts %}
 <script id="task-form-data" type="application/json">{{ {"subjectsApi": schedule_proxy_base_url, "userGroup": user.group_name or ""} | tojson }}</script>
+<script src="/static/autocomplete.js?v=1" defer></script>
 <script src="/static/task_form.js?v=1" defer></script>
 {% endblock %}

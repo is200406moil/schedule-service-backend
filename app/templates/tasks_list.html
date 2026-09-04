@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Задачи · Мой семестр{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/static/css/tasks.css?v=1">{% endblock %}
 {% block content %}
 <div class="tasks-page">
   <header class="page-hero tasks-hero">
@@ -125,6 +126,7 @@
 </div>
 
 <div class="toast" id="tasks-toast" role="status" aria-live="polite"></div>
-
+{% endblock %}
+{% block scripts %}
 <script src="/static/tasks.js?v=1" defer></script>
 {% endblock %}

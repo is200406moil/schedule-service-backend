@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Профиль · Мой семестр{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/static/css/profile.css?v=1">{% endblock %}
 {% block content %}
 {% set full_name = ((user.last_name or '') ~ ' ' ~ (user.first_name or '') ~ ' ' ~ (user.patronymic or '')) | trim %}
 <div class="profile-page">
@@ -208,6 +209,9 @@
 </div>
 
 <div class="toast" id="profile-toast" role="status" aria-live="polite"></div>
+{% endblock %}
+{% block scripts %}
 <script type="application/json" id="profile-data">{{ {"groupsApi": schedule_proxy_base_url ~ "/groups", "openEdit": open_edit} | tojson }}</script>
+<script src="/static/autocomplete.js?v=1" defer></script>
 <script src="/static/profile.js?v=1" defer></script>
 {% endblock %}

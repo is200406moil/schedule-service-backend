@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Календарь · Мой семестр{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/static/css/calendar.css?v=1">{% endblock %}
 {% block content %}
 <div class="calendar-page">
   <header class="page-hero calendar-hero">
@@ -130,6 +131,8 @@
 </div>
 
 <div class="toast" id="calendar-toast" role="status" aria-live="polite"></div>
+{% endblock %}
+{% block scripts %}
 <script id="calendar-data" type="application/json">{{ calendar_data | tojson }}</script>
 <script src="/static/calendar.js?v=1" defer></script>
 {% endblock %}

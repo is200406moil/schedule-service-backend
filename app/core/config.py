@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Настройки из окружения / .env (расширение при подключении БД и JWT)."""
+    """Настройки приложения, загружаемые из окружения или файла .env."""
 
     model_config = SettingsConfigDict(
         env_file=".env",

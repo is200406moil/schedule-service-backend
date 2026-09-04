@@ -147,25 +147,45 @@ def test_web_pages_load_external_page_assets(client: TestClient) -> None:
     headers = register_and_login(client, "external-assets@example.com")
 
     dashboard = client.get("/ui", headers=headers)
+    calendar = client.get("/ui/calendar", headers=headers)
     tasks = client.get("/ui/tasks", headers=headers)
     task_form = client.get("/ui/tasks/new", headers=headers)
+    profile = client.get("/ui/profile", headers=headers)
 
-    assert dashboard.status_code == 200
+    pages = {
+        "dashboard": dashboard,
+        "calendar": calendar,
+        "tasks": tasks,
+        "task_form": task_form,
+        "profile": profile,
+    }
+    for response in pages.values():
+        assert response.status_code == 200
+        assert 'href="/static/css/base.css?v=2"' in response.text
+        assert 'href="/static/css/app.css?v=1"' in response.text
+
+    page_styles = {
+        "dashboard": None,
+        "calendar": "calendar",
+        "tasks": "tasks",
+        "task_form": "tasks",
+        "profile": "profile",
+    }
+    for page_name, response in pages.items():
+        expected = page_styles[page_name]
+        if expected:
+            assert f'href="/static/css/{expected}.css?v=1"' in response.text
+        for stylesheet in {"calendar", "tasks", "profile", "auth"} - {expected}:
+            assert f"/static/css/{stylesheet}.css" not in response.text
+
     assert 'id="dashboard-data" type="application/json"' in dashboard.text
     assert '<script src="/static/dashboard.js?v=1" defer></script>' in dashboard.text
-    for stylesheet in (
-        "base",
-        "dashboard",
-        "tasks",
-        "calendar",
-        "profile",
-        "auth",
-    ):
-        version = 2 if stylesheet in {"base", "auth"} else 1
-        assert f'href="/static/css/{stylesheet}.css?v={version}"' in dashboard.text
-    assert tasks.status_code == 200
+    assert 'id="calendar-data" type="application/json"' in calendar.text
+    assert '<script src="/static/calendar.js?v=1" defer></script>' in calendar.text
     assert '<script src="/static/tasks.js?v=1" defer></script>' in tasks.text
-    assert task_form.status_code == 200
     assert task_form.text.count('class="required-label"') == 1
     assert 'id="task-form-data" type="application/json"' in task_form.text
+    assert '<script src="/static/autocomplete.js?v=1" defer></script>' in task_form.text
     assert '<script src="/static/task_form.js?v=1" defer></script>' in task_form.text
+    assert '<script src="/static/autocomplete.js?v=1" defer></script>' in profile.text
+    assert '<script src="/static/profile.js?v=1" defer></script>' in profile.text
