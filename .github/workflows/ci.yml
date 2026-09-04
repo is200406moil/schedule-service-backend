@@ -33,7 +33,7 @@ jobs:
 
     env:
       DATABASE_URL: postgresql+psycopg://user:password@localhost:5432/student_tasks_ci
-      SECRET_KEY: ci-only-secret
+      SECRET_KEY: ci-only-secret-with-at-least-32-characters
 
     steps:
       - uses: actions/checkout@v7
@@ -48,6 +48,8 @@ jobs:
         run: python -m ruff check .
       - name: Check Python formatting
         run: python -m ruff format --check app tests
+      - name: Audit Python dependencies
+        run: python -m pip_audit --requirement requirements-dev.lock
       - name: Check browser JavaScript syntax
         shell: bash
         run: |
