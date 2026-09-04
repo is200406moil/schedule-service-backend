@@ -1,6 +1,7 @@
 import os
 
-os.environ["DATABASE_URL"] = "sqlite+pysqlite:///:memory:"
+TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "sqlite+pysqlite:///:memory:")
+os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 os.environ["SECRET_KEY"] = "test-secret-with-at-least-32-characters"
 
 import pytest
@@ -16,11 +17,13 @@ from app.main import app
 
 @pytest.fixture()
 def client() -> TestClient:
-    engine = create_engine(
-        "sqlite+pysqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
+    engine_options: dict[str, object] = {}
+    if TEST_DATABASE_URL.startswith("sqlite"):
+        engine_options = {
+            "connect_args": {"check_same_thread": False},
+            "poolclass": StaticPool,
+        }
+    engine = create_engine(TEST_DATABASE_URL, **engine_options)
     testing_session = sessionmaker(bind=engine, autoflush=False, autocommit=False)
     Base.metadata.create_all(engine)
 
