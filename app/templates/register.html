@@ -3,10 +3,6 @@
 {% block content %}
 <div class="auth-layout auth-register-layout">
   <section class="auth-intro auth-register-intro" aria-labelledby="register-intro-title">
-    <span class="auth-intro-badge">
-      <svg class="icon" aria-hidden="true"><use href="#icon-graduation-cap"></use></svg>
-      Начните с учебной группы
-    </span>
     <h1 id="register-intro-title">Соберите семестр в одном месте.</h1>
     <p>Укажите группу — расписание появится автоматически. Остальное можно заполнить сейчас или позже в профиле.</p>
     <ul class="auth-benefits">
@@ -46,14 +42,14 @@
         <legend><span>1</span>Данные для входа</legend>
         <div class="auth-form-grid">
           <div class="field-group">
-            <label for="register-email">Электронная почта</label>
+            <label class="required-label" for="register-email">Электронная почта</label>
             <div class="input-with-icon">
               <svg class="icon" aria-hidden="true"><use href="#icon-mail"></use></svg>
               <input type="email" id="register-email" name="email" required autocomplete="username" placeholder="name@example.com">
             </div>
           </div>
           <div class="field-group">
-            <label for="register-password">Пароль</label>
+            <label class="required-label" for="register-password">Пароль</label>
             <div class="input-with-icon">
               <svg class="icon" aria-hidden="true"><use href="#icon-lock"></use></svg>
               <input type="password" id="register-password" name="password" required autocomplete="new-password" minlength="8" placeholder="Не меньше 8 символов">

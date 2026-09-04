@@ -11,8 +11,10 @@ def test_public_auth_pages_render_new_forms(client: TestClient) -> None:
 
     assert login_response.status_code == 200
     assert "Один экран для пар, задач и дедлайнов" in login_response.text
+    assert login_response.text.count('class="required-label"') == 2
     assert register_response.status_code == 200
     assert "Обязательны только почта и пароль" in register_response.text
+    assert register_response.text.count('class="required-label"') == 2
     assert '<script src="/static/auth.js?v=1" defer></script>' in register_response.text
 
 

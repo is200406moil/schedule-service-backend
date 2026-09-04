@@ -98,7 +98,7 @@
       <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
       <input type="hidden" name="return_to" id="modal-return-to" value="/ui/calendar">
       <div class="field-group">
-        <label for="modal-title">Название</label>
+        <label class="required-label" for="modal-title">Название</label>
         <input type="text" name="title" id="modal-title" required maxlength="500" placeholder="Что нужно сделать?">
       </div>
       <div class="field-group">

@@ -55,14 +55,14 @@
     <form method="post" action="/ui/login" class="auth-form">
       <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
       <div class="field-group">
-        <label for="login-email">Электронная почта</label>
+        <label class="required-label" for="login-email">Электронная почта</label>
         <div class="input-with-icon">
           <svg class="icon" aria-hidden="true"><use href="#icon-mail"></use></svg>
           <input type="email" id="login-email" name="email" required autocomplete="username" placeholder="name@example.com">
         </div>
       </div>
       <div class="field-group">
-        <label for="login-password">Пароль</label>
+        <label class="required-label" for="login-password">Пароль</label>
         <div class="input-with-icon">
           <svg class="icon" aria-hidden="true"><use href="#icon-lock"></use></svg>
           <input type="password" id="login-password" name="password" required autocomplete="current-password" placeholder="Введите пароль">

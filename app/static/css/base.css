@@ -9,6 +9,11 @@ body {
   flex-direction: column;
   min-height: 100vh;
 }
+.required-label::after {
+  content: " *";
+  color: var(--coral, #d84f4f);
+  font-weight: 800;
+}
 .top {
   background: #fff;
   border-bottom: 1px solid #e2e5ee;

@@ -84,9 +84,11 @@ def test_web_pages_load_external_page_assets(client: TestClient) -> None:
         "profile",
         "auth",
     ):
-        assert f'href="/static/css/{stylesheet}.css?v=1"' in dashboard.text
+        version = 2 if stylesheet in {"base", "auth"} else 1
+        assert f'href="/static/css/{stylesheet}.css?v={version}"' in dashboard.text
     assert tasks.status_code == 200
     assert '<script src="/static/tasks.js?v=1" defer></script>' in tasks.text
     assert task_form.status_code == 200
+    assert task_form.text.count('class="required-label"') == 1
     assert 'id="task-form-data" type="application/json"' in task_form.text
     assert '<script src="/static/task_form.js?v=1" defer></script>' in task_form.text
