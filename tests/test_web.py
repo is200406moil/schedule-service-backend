@@ -161,7 +161,7 @@ def test_web_pages_load_external_page_assets(client: TestClient) -> None:
     }
     for response in pages.values():
         assert response.status_code == 200
-        assert 'href="/static/css/base.css?v=2"' in response.text
+        assert 'href="/static/css/base.css?v=3"' in response.text
         assert 'href="/static/css/app.css?v=1"' in response.text
 
     page_styles = {
@@ -174,7 +174,8 @@ def test_web_pages_load_external_page_assets(client: TestClient) -> None:
     for page_name, response in pages.items():
         expected = page_styles[page_name]
         if expected:
-            assert f'href="/static/css/{expected}.css?v=1"' in response.text
+            version = 2 if expected in {"tasks", "profile"} else 1
+            assert f'href="/static/css/{expected}.css?v={version}"' in response.text
         for stylesheet in {"calendar", "tasks", "profile", "auth"} - {expected}:
             assert f"/static/css/{stylesheet}.css" not in response.text
 
