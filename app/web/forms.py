@@ -7,6 +7,17 @@ from starlette.status import HTTP_303_SEE_OTHER
 from app.core.avatar import MAX_AVATAR_BYTES, encode_avatar
 from app.core.time import normalize_due_at
 
+_SAFE_UI_RETURNS = {
+    "/ui": "/ui",
+    "/ui/calendar": "/ui/calendar",
+    "/ui/profile": "/ui/profile",
+    "/ui/tasks": "/ui/tasks",
+    "/ui/tasks?filter=active": "/ui/tasks?filter=active",
+    "/ui/tasks?filter=today": "/ui/tasks?filter=today",
+    "/ui/tasks?filter=overdue": "/ui/tasks?filter=overdue",
+    "/ui/tasks?filter=done": "/ui/tasks?filter=done",
+}
+
 
 def login_redirect() -> RedirectResponse:
     return RedirectResponse(url="/ui/login", status_code=HTTP_303_SEE_OTHER)
@@ -21,10 +32,8 @@ def parse_due_at(raw: str | None) -> datetime | None:
     return normalize_due_at(datetime.fromisoformat(value))
 
 
-def safe_ui_return(value: str | None, default: str = "/ui/tasks") -> str:
-    if value and value.startswith("/ui") and not value.startswith("//"):
-        return value
-    return default
+def safe_ui_return(value: str | None) -> str:
+    return _SAFE_UI_RETURNS.get(value or "", "/ui/tasks")
 
 
 def encode_avatar_file(file: UploadFile | None) -> str | None:

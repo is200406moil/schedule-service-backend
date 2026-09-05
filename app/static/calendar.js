@@ -372,7 +372,7 @@
       toggle.addEventListener("click", () => toggleTask(task, toggle));
 
       const href = document.createElement("a");
-      const returnTo = `/ui/calendar?date=${dateKey(state.selected)}`;
+      const returnTo = "/ui/calendar";
       href.href = `/ui/tasks/${task.id}/edit?return_to=${encodeURIComponent(returnTo)}`;
       href.className = "agenda-task-content";
       const title = document.createElement("strong");

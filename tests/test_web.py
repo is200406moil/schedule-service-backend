@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from app.core.time import datetime_local_value, normalize_due_at
 from app.schemas.task import TaskCreate
+from app.web.forms import safe_ui_return
 from tests.helpers import register_and_login
 
 
@@ -184,6 +185,28 @@ def test_task_forms_reject_invalid_values_without_losing_input(
     assert invalid_edit.status_code == 422
     assert 'id="status-done" value="1" checked' in invalid_edit.text
     assert client.get(f"/tasks/{task_id}", headers=headers).json()["title"] == ("Исходное название")
+
+
+def test_task_return_destination_uses_an_exact_allowlist() -> None:
+    allowed = {
+        "/ui": "/ui",
+        "/ui/calendar": "/ui/calendar",
+        "/ui/profile": "/ui/profile",
+        "/ui/tasks": "/ui/tasks",
+        "/ui/tasks?filter=overdue": "/ui/tasks?filter=overdue",
+    }
+
+    for value, expected in allowed.items():
+        assert safe_ui_return(value) == expected
+
+    for unsafe in (
+        "https://example.com/ui/tasks",
+        "//example.com/ui/tasks",
+        "/ui\\example.com",
+        "/ui/tasks?filter=done&next=https://example.com",
+        "/ui/calendar?date=not-validated",
+    ):
+        assert safe_ui_return(unsafe) == "/ui/tasks"
 
 
 def test_web_pages_load_external_page_assets(client: TestClient) -> None:

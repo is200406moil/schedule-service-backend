@@ -55,8 +55,12 @@ def test_api_documentation_uses_a_scoped_content_security_policy(
 
     assert response.status_code == 200
     policy = response.headers["content-security-policy"]
-    assert "https://cdn.jsdelivr.net" in policy
-    assert "script-src 'self'" in policy
+    directives = {
+        tokens[0]: set(tokens[1:])
+        for raw_directive in policy.split(";")
+        if (tokens := raw_directive.split())
+    }
+    assert {"'self'", "https://cdn.jsdelivr.net"} <= directives["script-src"]
 
 
 @pytest.mark.parametrize(
