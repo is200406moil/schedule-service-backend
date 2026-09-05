@@ -89,10 +89,10 @@ Python 3.12, FastAPI, SQLAlchemy, PostgreSQL, Alembic, MongoDB, Jinja2, JavaScri
 python -m pip install -r requirements-dev.lock
 python -m ruff check .
 python -m ruff format --check app tests
-python -m pytest --cov=app --cov-report=term-missing --cov-fail-under=80
+python -m pytest --cov=app --cov-branch --cov-report=term-missing --cov-fail-under=80
 ```
 
-Локально тесты по умолчанию используют отдельную SQLite-базу в памяти, поэтому для быстрого запуска PostgreSQL не нужен. В CI тот же набор тестов выполняется на PostgreSQL; отдельно проверяются миграции в обе стороны, покрытие не ниже 80%, уязвимости зависимостей, синтаксис браузерного JavaScript и запуск всего стека в контейнерах.
+Локально тесты по умолчанию используют отдельную SQLite-базу в памяти, поэтому для быстрого запуска PostgreSQL не нужен. В CI тот же набор тестов выполняется на PostgreSQL; отдельно проверяются миграции в обе стороны, покрытие строк и ветвлений не ниже 80%, уязвимости зависимостей, синтаксис браузерного JavaScript и запуск всего стека в контейнерах.
 
 `requirements.txt` и `requirements-dev.txt` содержат допустимые диапазоны версий, а lock-файлы фиксируют проверенный набор зависимостей для Docker и CI. После изменения исходных списков их можно обновить так:
 

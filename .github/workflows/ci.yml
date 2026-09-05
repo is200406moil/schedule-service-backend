@@ -59,7 +59,7 @@ jobs:
             node --check "$file"
           done
       - name: Run tests with coverage
-        run: python -m pytest --cov=app --cov-report=term-missing --cov-fail-under=80
+        run: python -m pytest --cov=app --cov-branch --cov-report=term-missing --cov-fail-under=80
       - name: Check PostgreSQL migrations
         run: |
           python -m alembic upgrade head
