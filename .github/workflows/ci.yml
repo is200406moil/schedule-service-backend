@@ -89,6 +89,7 @@ jobs:
           curl --fail --show-error --retry 5 --retry-delay 2 http://localhost:8000/health
           curl --fail --show-error --retry 5 --retry-delay 2 http://localhost:8000/ready
           curl --fail --show-error --retry 5 --retry-delay 2 http://localhost:5000/health
+          curl --fail --show-error --retry 5 --retry-delay 2 http://localhost:5000/ready
           curl --fail --show-error --retry 5 --retry-delay 2 http://localhost:8000/ui/login > /dev/null
       - name: Show container logs on failure
         if: failure()

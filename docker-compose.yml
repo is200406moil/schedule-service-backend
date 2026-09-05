@@ -54,7 +54,7 @@ services:
       context: .
       dockerfile: Dockerfile.schedule
       args:
-        SCHEDULE_COMMIT: 08e7cf7ff18f39fc24eac0e0fe537b96ec9c6eec
+        SCHEDULE_COMMIT: 31f057e680579682a09c75ef11e166c30b2bd963
     depends_on:
       schedule-db:
         condition: service_healthy
@@ -69,7 +69,7 @@ services:
         - CMD
         - python
         - -c
-        - import urllib.request; urllib.request.urlopen('http://localhost:5000/health', timeout=2)
+        - import urllib.request; urllib.request.urlopen('http://localhost:5000/ready', timeout=2)
       interval: 10s
       timeout: 3s
       retries: 5
