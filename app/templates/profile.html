@@ -8,7 +8,7 @@
     <div>
       <p class="eyebrow">Учётная запись</p>
       <h1>Профиль</h1>
-      <p class="page-description">Личные данные, учебная группа и состояние семестра.</p>
+      <p class="page-description">Личные данные, учебная группа и статистика задач.</p>
     </div>
     <form action="/ui/logout" method="post" class="profile-logout-form">
       <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
@@ -100,7 +100,7 @@
     <section class="surface profile-progress-card" aria-labelledby="profile-progress-title">
       <div class="profile-section-heading">
         <div>
-          <p class="section-kicker">Учебный ритм</p>
+          <p class="section-kicker">Статистика</p>
           <h2 id="profile-progress-title">Задачи семестра</h2>
         </div>
         <a class="profile-text-action" href="/ui/tasks">Все задачи</a>
@@ -144,7 +144,7 @@
         <span><svg class="icon" aria-hidden="true"><use href="#icon-sparkles"></use></svg></span>
         <div>
           <strong>Активных задач нет</strong>
-          <p>Можно добавить следующую задачу или спокойно выдохнуть.</p>
+          <p>Новые задачи появятся в этом блоке.</p>
         </div>
         <a class="button button-secondary" href="/ui/tasks/new">Добавить задачу</a>
       </div>
@@ -198,7 +198,7 @@
           <input type="text" id="profile-group-name" name="group_name" maxlength="64" value="{{ form_values.group_name }}" placeholder="Например, ИКБО-14-23" autocomplete="off">
           <div class="autocomplete-list"></div>
         </div>
-        <p class="field-hint">По группе приложение загружает актуальное расписание.</p>
+        <p class="field-hint">Приложение загружает расписание для указанной группы.</p>
       </div>
       <div class="task-editor-actions">
         <button type="button" class="button button-secondary" data-close="modal">Отмена</button>

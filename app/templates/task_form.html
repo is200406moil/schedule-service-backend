@@ -9,9 +9,9 @@
   </a>
 
   <header class="task-form-heading">
-    <p class="eyebrow">{% if task %}Настройка задачи{% else %}Новый план{% endif %}</p>
+    <p class="eyebrow">{% if task %}Редактирование{% else %}Новая задача{% endif %}</p>
     <h1>{{ heading }}</h1>
-    <p>{% if task %}Обновите детали, срок или статус задачи.{% else %}Запишите главное — остальные поля можно заполнить позже.{% endif %}</p>
+    <p>{% if task %}Обновите детали, срок или статус задачи.{% else %}Укажите название. Остальные поля необязательны.{% endif %}</p>
   </header>
 
   <section class="surface task-editor">
@@ -43,7 +43,7 @@
           placeholder="Например, подготовить отчёт по курсовой"
           value="{{ form_values.title }}"
         >
-        <p class="field-hint">Коротко сформулируйте результат, который нужно получить.</p>
+        <p class="field-hint">Коротко опишите ожидаемый результат.</p>
       </div>
 
       <div class="field-group field-full">
@@ -81,7 +81,7 @@
             >
             <div class="autocomplete-list"></div>
           </div>
-          <p class="field-hint">Подскажем предметы из расписания вашей группы.</p>
+          <p class="field-hint">Список предметов загружается из расписания группы.</p>
         </div>
       </div>
 
@@ -89,7 +89,7 @@
       <label class="task-status-control" for="status-done">
         <span>
           <strong>Задача выполнена</strong>
-          <small>Она переместится в раздел «Выполненные».</small>
+          <small>Задача появится в разделе «Выполненные».</small>
         </span>
         <input type="checkbox" name="status_done" id="status-done" value="1" {% if form_values.status_done %}checked{% endif %}>
         <span class="switch" aria-hidden="true"><i></i></span>

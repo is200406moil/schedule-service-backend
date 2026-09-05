@@ -7,7 +7,7 @@
     <div>
       <p class="eyebrow">{{ today_label }}</p>
       <h1>Добрый день{% if user.first_name %}, {{ user.first_name }}{% endif %}</h1>
-      <p class="page-description">Пары и задачи на сегодня — без лишнего шума.</p>
+      <p class="page-description">Расписание и ближайшие задачи на сегодня.</p>
     </div>
     <a class="button button-primary hero-action" href="/ui/tasks/new">
       <svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg>
@@ -97,8 +97,8 @@
       {% else %}
       <div class="empty-state compact-empty">
         <span class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#icon-sparkles"></use></svg></span>
-        <h3>Всё спокойно</h3>
-        <p>Активных задач пока нет. Можно выдохнуть или запланировать следующую.</p>
+        <h3>Активных задач нет</h3>
+        <p>Новые задачи появятся в этом блоке.</p>
         <a class="button button-secondary" href="/ui/tasks/new">Создать задачу</a>
       </div>
       {% endif %}

@@ -131,8 +131,8 @@
         } else {
           emptyState(
             "icon-coffee",
-            "Сегодня без пар",
-            "Расписание свободно — хороший момент заняться своими задачами.",
+            "На сегодня пар нет",
+            "Проверьте ближайшие задачи.",
           );
         }
       })
@@ -184,8 +184,8 @@
             list.className = "empty-state compact-empty";
             list.innerHTML = `
               <span class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#icon-sparkles"></use></svg></span>
-              <h3>Всё спокойно</h3>
-              <p>Активных задач пока нет. Можно выдохнуть или запланировать следующую.</p>
+              <h3>Активных задач нет</h3>
+              <p>Новые задачи появятся в этом блоке.</p>
               <a class="button button-secondary" href="/ui/tasks/new">Создать задачу</a>
             `;
           }

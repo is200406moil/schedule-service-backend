@@ -7,7 +7,7 @@
     <div>
       <p class="eyebrow">Учебный план</p>
       <h1>Задачи</h1>
-      <p class="page-description">Держите дедлайны в порядке и сосредоточьтесь на ближайшем.</p>
+      <p class="page-description">Планируйте задачи и следите за ближайшими сроками.</p>
     </div>
     <a class="button button-primary" href="/ui/tasks/new">
       <svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg>
@@ -102,23 +102,23 @@
     <span class="empty-icon"><svg class="icon" aria-hidden="true"><use href="#icon-list-checks"></use></svg></span>
     {% if task_filter == 'overdue' %}
       <h2>Ничего не просрочено</h2>
-      <p>Отлично: все задачи укладываются в срок.</p>
+      <p>Текущие задачи укладываются в срок.</p>
       <a class="button button-secondary" href="/ui/tasks">Показать все задачи</a>
     {% elif task_filter == 'today' %}
       <h2>На сегодня задач нет</h2>
-      <p>Можно заняться ближайшими делами или добавить новую задачу.</p>
+      <p>Добавьте задачу, когда появится новое дело.</p>
       <a class="button button-secondary" href="/ui/tasks/new">Добавить задачу</a>
     {% elif task_filter == 'done' %}
       <h2>Пока ничего не завершено</h2>
-      <p>Выполненные задачи будут собираться здесь.</p>
+      <p>Здесь появятся выполненные задачи.</p>
       <a class="button button-secondary" href="/ui/tasks?filter=active">Открыть активные</a>
     {% elif task_filter == 'active' %}
       <h2>Все задачи выполнены</h2>
-      <p>Можно выдохнуть или запланировать следующий шаг.</p>
+      <p>Добавьте задачу, когда появится новое дело.</p>
       <a class="button button-secondary" href="/ui/tasks/new">Создать задачу</a>
     {% else %}
-      <h2>Начните с первой задачи</h2>
-      <p>Добавьте дедлайн или небольшое дело — они появятся здесь и в обзоре.</p>
+      <h2>Задач пока нет</h2>
+      <p>Создайте задачу с дедлайном — она появится здесь и в обзоре.</p>
       <a class="button button-primary" href="/ui/tasks/new">Создать задачу</a>
     {% endif %}
   </section>

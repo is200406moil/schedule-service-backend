@@ -16,7 +16,7 @@ def test_public_auth_pages_render_new_forms(client: TestClient) -> None:
     register_response = client.get("/ui/register")
 
     assert login_response.status_code == 200
-    assert "Один экран для пар, задач и дедлайнов" in login_response.text
+    assert "Расписание, задачи и дедлайны на одном экране" in login_response.text
     assert login_response.text.count('class="required-label"') == 2
     assert 'href="/static/css/auth.css?v=3"' in login_response.text
     assert register_response.status_code == 200
