@@ -4,6 +4,7 @@ import { completeTask, getSchedule, getTasks, UnauthorizedError } from "./api";
 import { addDays, formatDate, isOverdue, lessonWord, lessonsForDate, taskWord } from "./dates";
 import { DayAgenda } from "./DayAgenda";
 import { Shell } from "./Shell";
+import { SessionEnded } from "./SessionEnded";
 import { TaskPanel } from "./TaskPanel";
 import { WeekStrip } from "./WeekStrip";
 import type { BootData, Loadable, Schedule, Task } from "./types";
@@ -70,18 +71,7 @@ export function App({ boot }: { boot: BootData }) {
   }
 
   if (sessionExpired) {
-    return (
-      <Shell user={boot}>
-        <div className="workspace-inner">
-          <section className="session-ended" aria-labelledby="session-title">
-            <p className="eyebrow">Мой семестр</p>
-            <h1 id="session-title">Нужно войти снова</h1>
-            <p>Вы давно не открывали эту страницу, и сеанс завершился. После входа обзор снова загрузит расписание и задачи.</p>
-            <a className="primary-action" href="/ui/login">Войти</a>
-          </section>
-        </div>
-      </Shell>
-    );
+    return <SessionEnded user={boot} section="overview" />;
   }
 
   return (
@@ -99,7 +89,7 @@ export function App({ boot }: { boot: BootData }) {
             <p>{boot.firstName ? `${boot.firstName}, ` : ""}выберите день недели и посмотрите, что запланировано.</p>
             <div className="hero-actions">
               <a className="primary-action" href="/ui/tasks/new"><Plus size={18} aria-hidden="true" /> Новая задача</a>
-              <a className="quiet-action" href="/ui/calendar">Открыть календарь <ArrowUpRight size={17} aria-hidden="true" /></a>
+              <a className="quiet-action" href="/ui/calendar/preview">Открыть календарь <ArrowUpRight size={17} aria-hidden="true" /></a>
             </div>
           </div>
           <div className="hero-aside">

@@ -21,7 +21,7 @@
   </tr>
 </table>
 
-Новый обзор на React и TypeScript пока доступен отдельно по адресу `/ui/preview` после входа. Текущий `/ui` и остальные страницы не заменены: так можно сравнить новый сценарий со старым, прежде чем переносить календарь и задачи.
+Новый обзор на React и TypeScript доступен после входа по адресу `/ui/preview`, а новый календарь — по адресу `/ui/calendar/preview`. В календаре можно выбрать день месяца, посмотреть пары своей группы и задачи на этот день, создать задачу и менять её статус. Прежние страницы `/ui` и `/ui/calendar` остаются доступными для сравнения.
 
 ## Что умеет приложение
 
@@ -69,6 +69,7 @@ docker compose up --build
 
 - приложение: <http://localhost:8000/ui>;
 - новый обзор для сравнения: <http://localhost:8000/ui/preview>;
+- новый календарь для сравнения: <http://localhost:8000/ui/calendar/preview>;
 - API основного приложения: <http://localhost:8000/docs>;
 - API расписания: <http://localhost:5000/docs>;
 - проверка процесса: <http://localhost:8000/health>;
@@ -84,7 +85,7 @@ docker compose down
 
 ## Технологии
 
-Python 3.12, FastAPI, SQLAlchemy, PostgreSQL, Alembic, MongoDB, Jinja2, React, TypeScript, Vite, Docker Compose, Pytest и Ruff. React пока используется только на странице предварительного обзора.
+Python 3.12, FastAPI, SQLAlchemy, PostgreSQL, Alembic, MongoDB, Jinja2, React, TypeScript, Vite, Docker Compose, Pytest и Ruff. React пока используется только на страницах предварительного обзора и календаря.
 
 ## Проверки
 

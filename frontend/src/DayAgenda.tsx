@@ -18,7 +18,7 @@ export function DayAgenda({ date, group, schedule, onRetry }: Props) {
           <p className="eyebrow">Расписание</p>
           <h2 id="agenda-heading">{formatDate(date, { weekday: "long", day: "numeric", month: "long" })}</h2>
         </div>
-        <a className="panel-link" href={`/ui/calendar?date=${date}`} aria-label="Открыть этот день в календаре">
+        <a className="panel-link" href={`/ui/calendar/preview?date=${date}`} aria-label="Открыть этот день в календаре">
           В календарь <ArrowUpRight size={18} aria-hidden="true" />
         </a>
       </div>

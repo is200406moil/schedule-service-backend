@@ -208,6 +208,7 @@ def test_task_return_destination_uses_an_exact_allowlist() -> None:
     allowed = {
         "/ui": "/ui",
         "/ui/calendar": "/ui/calendar",
+        "/ui/calendar/preview": "/ui/calendar/preview",
         "/ui/profile": "/ui/profile",
         "/ui/tasks": "/ui/tasks",
         "/ui/tasks?filter=overdue": "/ui/tasks?filter=overdue",
@@ -217,6 +218,10 @@ def test_task_return_destination_uses_an_exact_allowlist() -> None:
         assert safe_ui_return(value) == expected
 
     assert safe_ui_return("/ui/calendar?date=2026-09-03") == "/ui/calendar?date=2026-09-03"
+    assert (
+        safe_ui_return("/ui/calendar/preview?date=2026-09-03")
+        == "/ui/calendar/preview?date=2026-09-03"
+    )
     assert (
         safe_ui_return("/ui/calendar?date=2026-09-03&lesson=09:00")
         == "/ui/calendar?date=2026-09-03&lesson=09:00"
@@ -231,6 +236,8 @@ def test_task_return_destination_uses_an_exact_allowlist() -> None:
         "/ui/calendar?date=2026-02-30",
         "/ui/calendar?date=2026-09-03&lesson=25:00",
         "/ui/calendar?date=2026-09-03&next=https://example.com",
+        "/ui/calendar/preview?date=2026-02-30",
+        "/ui/calendar/preview?date=2026-09-03&next=https://example.com",
     ):
         assert safe_ui_return(unsafe) == "/ui/tasks"
 
@@ -274,6 +281,29 @@ def test_react_preview_uses_same_origin_built_assets(
     assert '<script id="preview-data" type="application/json">' in response.text
     assert 'src="/static/react/assets/main-test.js"' in response.text
     assert 'href="/static/react/assets/main-test.css"' in response.text
+    assert "'unsafe-inline'" not in response.headers["Content-Security-Policy"]
+
+
+def test_react_calendar_preview_keeps_date_and_same_origin_assets(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    headers = register_and_login(client, "react-calendar@example.com")
+    monkeypatch.setattr(
+        "app.routers.ui.calendar.preview_assets",
+        lambda entry: {
+            "preview_script": "/static/react/assets/calendar-test.js",
+            "preview_styles": ["/static/react/assets/calendar-test.css"],
+        },
+    )
+
+    response = client.get("/ui/calendar/preview?date=2026-09-03&lesson=09:00", headers=headers)
+
+    assert response.status_code == 200
+    assert "Календарь · Мой семестр" in response.text
+    assert '"initialDate": "2026-09-03"' in response.text
+    assert '"initialLesson": "09:00"' in response.text
+    assert 'src="/static/react/assets/calendar-test.js"' in response.text
     assert "'unsafe-inline'" not in response.headers["Content-Security-Policy"]
 
 

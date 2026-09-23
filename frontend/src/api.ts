@@ -1,4 +1,4 @@
-import type { Schedule, Task } from "./types";
+import type { NewTask, Schedule, Task } from "./types";
 
 export class UnauthorizedError extends Error {
   constructor() {
@@ -26,7 +26,7 @@ export function getSchedule(group: string, signal?: AbortSignal): Promise<Schedu
   return getJson<Schedule>(`/schedule/${encodeURIComponent(group)}/full_schedule`, signal);
 }
 
-export async function completeTask(id: number, csrfToken: string): Promise<void> {
+export async function setTaskStatus(id: number, status: "todo" | "done", csrfToken: string): Promise<void> {
   const response = await fetch(`/tasks/${id}`, {
     method: "PATCH",
     credentials: "same-origin",
@@ -34,7 +34,25 @@ export async function completeTask(id: number, csrfToken: string): Promise<void>
       "Content-Type": "application/json",
       "X-CSRF-Token": csrfToken,
     },
-    body: JSON.stringify({ status: "done" }),
+    body: JSON.stringify({ status }),
   });
   requireOk(response);
+}
+
+export function completeTask(id: number, csrfToken: string): Promise<void> {
+  return setTaskStatus(id, "done", csrfToken);
+}
+
+export async function createTask(data: NewTask, csrfToken: string): Promise<Task> {
+  const response = await fetch("/tasks", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": csrfToken,
+    },
+    body: JSON.stringify(data),
+  });
+  requireOk(response);
+  return (await response.json()) as Task;
 }

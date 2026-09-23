@@ -11,10 +11,19 @@ def test_preview_assets_resolve_local_vite_manifest(monkeypatch, tmp_path) -> No
     manifest.write_text(
         json.dumps(
             {
+                "_shared.js": {
+                    "file": "assets/shared-test.js",
+                    "css": ["assets/shared-test.css"],
+                },
                 "src/main.tsx": {
                     "file": "assets/main-test.js",
-                    "css": ["assets/main-test.css"],
-                }
+                    "imports": ["_shared.js"],
+                },
+                "src/calendar-main.tsx": {
+                    "file": "assets/calendar-test.js",
+                    "imports": ["_shared.js"],
+                    "css": ["assets/calendar-test.css"],
+                },
             }
         ),
         encoding="utf-8",
@@ -23,7 +32,14 @@ def test_preview_assets_resolve_local_vite_manifest(monkeypatch, tmp_path) -> No
 
     assert frontend.preview_assets() == {
         "preview_script": "/static/react/assets/main-test.js",
-        "preview_styles": ["/static/react/assets/main-test.css"],
+        "preview_styles": ["/static/react/assets/shared-test.css"],
+    }
+    assert frontend.preview_assets("src/calendar-main.tsx") == {
+        "preview_script": "/static/react/assets/calendar-test.js",
+        "preview_styles": [
+            "/static/react/assets/shared-test.css",
+            "/static/react/assets/calendar-test.css",
+        ],
     }
 
 

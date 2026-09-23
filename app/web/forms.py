@@ -11,6 +11,7 @@ from app.core.time import normalize_due_at
 _SAFE_UI_RETURNS = {
     "/ui": "/ui",
     "/ui/calendar": "/ui/calendar",
+    "/ui/calendar/preview": "/ui/calendar/preview",
     "/ui/profile": "/ui/profile",
     "/ui/tasks": "/ui/tasks",
     "/ui/tasks?filter=active": "/ui/tasks?filter=active",
@@ -19,7 +20,7 @@ _SAFE_UI_RETURNS = {
     "/ui/tasks?filter=done": "/ui/tasks?filter=done",
 }
 _CALENDAR_RETURN = re.compile(
-    r"/ui/calendar\?date=([0-9]{4}-[0-9]{2}-[0-9]{2})(?:&lesson=([0-9]{2}:[0-9]{2}))?"
+    r"/ui/calendar(?:/preview)?\?date=([0-9]{4}-[0-9]{2}-[0-9]{2})(?:&lesson=([0-9]{2}:[0-9]{2}))?"
 )
 
 

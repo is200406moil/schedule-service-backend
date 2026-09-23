@@ -10,7 +10,10 @@ export default defineConfig({
     emptyOutDir: true,
     manifest: true,
     rollupOptions: {
-      input: resolve(import.meta.dirname, "src/main.tsx"),
+      input: {
+        overview: resolve(import.meta.dirname, "src/main.tsx"),
+        calendar: resolve(import.meta.dirname, "src/calendar-main.tsx"),
+      },
     },
   },
 });

@@ -66,6 +66,7 @@ def ui_preview(
         name="preview.html",
         context={
             "user": user,
+            "page_title": "Обзор",
             **preview_assets(),
             "preview_data": {
                 "firstName": user.first_name or "",

@@ -6,6 +6,18 @@ export type BootData = {
   csrfToken: string;
 };
 
+export type CalendarBootData = BootData & {
+  initialDate: string | null;
+  initialLesson: string | null;
+};
+
+export type NewTask = {
+  title: string;
+  body: string | null;
+  subject: string | null;
+  due_at: string;
+};
+
 export type Task = {
   id: number;
   title: string;

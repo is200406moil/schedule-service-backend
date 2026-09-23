@@ -89,7 +89,7 @@ export function lessonWord(count: number): string {
   const mod100 = count % 100;
   if (mod10 === 1 && mod100 !== 11) return "пара";
   if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "пары";
-    return "пар";
+  return "пар";
 }
 
 export function taskWord(count: number): string {

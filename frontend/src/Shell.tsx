@@ -3,12 +3,12 @@ import type { ReactNode } from "react";
 import type { BootData } from "./types";
 
 const navigation = [
-  { href: "/ui/preview", label: "Обзор", icon: LayoutDashboard, active: true },
-  { href: "/ui/calendar", label: "Календарь", icon: CalendarDays, active: false },
-  { href: "/ui/tasks", label: "Задачи", icon: ClipboardList, active: false },
-];
+  { href: "/ui/preview", label: "Обзор", icon: LayoutDashboard, section: "overview" },
+  { href: "/ui/calendar/preview", label: "Календарь", icon: CalendarDays, section: "calendar" },
+  { href: "/ui/tasks", label: "Задачи", icon: ClipboardList, section: "tasks" },
+] as const;
 
-export function Shell({ user, children }: { user: BootData; children: ReactNode }) {
+export function Shell({ user, children, section = "overview" }: { user: BootData; children: ReactNode; section?: "overview" | "calendar" | "tasks" }) {
   return (
     <div className="shell">
       <a className="skip-link" href="#main">Перейти к содержимому</a>
@@ -19,8 +19,8 @@ export function Shell({ user, children }: { user: BootData; children: ReactNode 
         </a>
         <div className="sidebar-section-label">Рабочее место</div>
         <nav className="side-nav" aria-label="Основная навигация">
-          {navigation.map(({ href, label, icon: Icon, active }) => (
-            <a key={href} href={href} className={active ? "is-current" : undefined} aria-current={active ? "page" : undefined}>
+          {navigation.map(({ href, label, icon: Icon, section: itemSection }) => (
+            <a key={href} href={href} className={itemSection === section ? "is-current" : undefined} aria-current={itemSection === section ? "page" : undefined}>
               <Icon size={20} strokeWidth={1.9} aria-hidden="true" />
               <span>{label}</span>
             </a>
@@ -43,8 +43,8 @@ export function Shell({ user, children }: { user: BootData; children: ReactNode 
       <main id="main" className="workspace" tabIndex={-1}>{children}</main>
 
       <nav className="mobile-nav" aria-label="Основная навигация">
-        {navigation.map(({ href, label, icon: Icon, active }) => (
-          <a key={href} href={href} className={active ? "is-current" : undefined} aria-current={active ? "page" : undefined}>
+        {navigation.map(({ href, label, icon: Icon, section: itemSection }) => (
+          <a key={href} href={href} className={itemSection === section ? "is-current" : undefined} aria-current={itemSection === section ? "page" : undefined}>
             <Icon size={21} strokeWidth={1.9} aria-hidden="true" />
             <span>{label}</span>
           </a>
