@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.core.time import normalize_due_at
+from app.core.time import as_utc, normalize_due_at
 
 TaskStatus = Literal["todo", "done"]
 
@@ -41,4 +41,8 @@ class TaskRead(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    _normalize_due_at = field_validator("due_at")(normalize_due_at)
+    @field_validator("due_at")
+    @classmethod
+    def restore_due_at(cls, value: datetime | None) -> datetime | None:
+        # SQLite drops the timezone; stored deadlines are already UTC.
+        return as_utc(value) if value is not None else None

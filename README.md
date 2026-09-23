@@ -21,6 +21,8 @@
   </tr>
 </table>
 
+Новый обзор на React и TypeScript пока доступен отдельно по адресу `/ui/preview` после входа. Текущий `/ui` и остальные страницы не заменены: так можно сравнить новый сценарий со старым, прежде чем переносить календарь и задачи.
+
 ## Что умеет приложение
 
 - регистрировать пользователей и изолировать их данные;
@@ -66,6 +68,7 @@ docker compose up --build
 После запуска:
 
 - приложение: <http://localhost:8000/ui>;
+- новый обзор для сравнения: <http://localhost:8000/ui/preview>;
 - API основного приложения: <http://localhost:8000/docs>;
 - API расписания: <http://localhost:5000/docs>;
 - проверка процесса: <http://localhost:8000/health>;
@@ -81,7 +84,7 @@ docker compose down
 
 ## Технологии
 
-Python 3.12, FastAPI, SQLAlchemy, PostgreSQL, Alembic, MongoDB, Jinja2, JavaScript, Docker Compose, Pytest и Ruff.
+Python 3.12, FastAPI, SQLAlchemy, PostgreSQL, Alembic, MongoDB, Jinja2, React, TypeScript, Vite, Docker Compose, Pytest и Ruff. React пока используется только на странице предварительного обзора.
 
 ## Проверки
 
@@ -90,7 +93,13 @@ python -m pip install -r requirements-dev.lock
 python -m ruff check .
 python -m ruff format --check app tests
 python -m pytest --cov=app --cov-branch --cov-report=term-missing --cov-fail-under=80
+cd frontend
+npm ci
+npm run build
+npm test
 ```
+
+Для локального запуска FastAPI без Docker сначала соберите интерфейс в `frontend`: результат попадёт в `app/static/react` и не хранится в Git. В Docker сборка выполняется автоматически.
 
 Локально тесты по умолчанию используют отдельную SQLite-базу в памяти, поэтому PostgreSQL для них не нужен. В CI тот же набор тестов выполняется на PostgreSQL. Отдельные проверки охватывают миграции в обе стороны, покрытие строк и ветвлений не ниже 80%, уязвимости зависимостей, синтаксис браузерного JavaScript и запуск стека в контейнерах.
 

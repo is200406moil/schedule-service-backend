@@ -1,4 +1,5 @@
-from datetime import datetime
+import re
+from datetime import date, datetime, time
 
 from fastapi import UploadFile
 from fastapi.responses import RedirectResponse
@@ -17,6 +18,9 @@ _SAFE_UI_RETURNS = {
     "/ui/tasks?filter=overdue": "/ui/tasks?filter=overdue",
     "/ui/tasks?filter=done": "/ui/tasks?filter=done",
 }
+_CALENDAR_RETURN = re.compile(
+    r"/ui/calendar\?date=([0-9]{4}-[0-9]{2}-[0-9]{2})(?:&lesson=([0-9]{2}:[0-9]{2}))?"
+)
 
 
 def login_redirect() -> RedirectResponse:
@@ -33,7 +37,21 @@ def parse_due_at(raw: str | None) -> datetime | None:
 
 
 def safe_ui_return(value: str | None) -> str:
-    return _SAFE_UI_RETURNS.get(value or "", "/ui/tasks")
+    if value in _SAFE_UI_RETURNS:
+        return _SAFE_UI_RETURNS[value]
+    if value is None:
+        return "/ui/tasks"
+
+    match = _CALENDAR_RETURN.fullmatch(value)
+    if match is None:
+        return "/ui/tasks"
+    try:
+        date.fromisoformat(match.group(1))
+        if match.group(2) is not None:
+            time.fromisoformat(match.group(2))
+    except ValueError:
+        return "/ui/tasks"
+    return value
 
 
 def encode_avatar_file(file: UploadFile | None) -> str | None:

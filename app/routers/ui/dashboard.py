@@ -6,6 +6,7 @@ from app.core.time import as_utc, moscow_date
 from app.models import User
 from app.services import task_service
 from app.web.forms import login_redirect
+from app.web.frontend import preview_assets
 from app.web.presentation import dashboard_date, due_label, is_overdue, moscow_today
 from app.web.templates import templates
 
@@ -48,5 +49,30 @@ def ui_home(
             "overdue_count": overdue_count,
             "today_label": dashboard_date(today),
             "upcoming_tasks": upcoming_tasks,
+        },
+    )
+
+
+@router.get("/preview", include_in_schema=False)
+def ui_preview(
+    request: Request,
+    user: User | None = Depends(get_current_user_optional),
+):
+    """Keep the existing dashboard available while the React UI is reviewed."""
+    if user is None:
+        return login_redirect()
+    return templates.TemplateResponse(
+        request=request,
+        name="preview.html",
+        context={
+            "user": user,
+            **preview_assets(),
+            "preview_data": {
+                "firstName": user.first_name or "",
+                "group": user.group_name or "",
+                "avatar": user.avatar_base64 or "",
+                "today": moscow_today().isoformat(),
+                "csrfToken": request.state.csrf_token,
+            },
         },
     )

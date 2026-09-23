@@ -1,3 +1,13 @@
+FROM node:22-alpine AS frontend-build
+
+WORKDIR /work/frontend
+
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+
+COPY frontend ./
+RUN npm run build
+
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -16,6 +26,7 @@ RUN addgroup --system app \
 COPY alembic ./alembic
 COPY alembic.ini ./alembic.ini
 COPY app ./app
+COPY --from=frontend-build /work/app/static/react ./app/static/react
 COPY prestart.sh ./
 
 RUN sed -i 's/\r$//' ./prestart.sh \

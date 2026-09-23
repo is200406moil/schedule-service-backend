@@ -21,6 +21,23 @@ def test_deadlines_are_stored_as_utc_and_rendered_in_moscow_time() -> None:
     assert datetime_local_value(datetime(2026, 9, 3, 15, 30, tzinfo=UTC)) == ("2026-09-03T18:30")
 
 
+def test_task_api_keeps_utc_deadline_when_sqlite_returns_naive_datetime(
+    client: TestClient,
+) -> None:
+    headers = register_and_login(client, "timezone-api@example.com")
+    created = client.post(
+        "/tasks",
+        headers=headers,
+        json={"title": "API deadline", "due_at": "2026-09-03T18:30:00+03:00"},
+    )
+
+    assert created.status_code == 201
+    assert created.json()["due_at"] == "2026-09-03T15:30:00Z"
+    listed = client.get("/tasks", headers=headers)
+    assert listed.status_code == 200
+    assert listed.json()[0]["due_at"] == "2026-09-03T15:30:00Z"
+
+
 def test_calendar_uses_internal_schedule_proxy(client: TestClient) -> None:
     headers = register_and_login(client, "calendar@example.com")
     client.post(
@@ -199,14 +216,65 @@ def test_task_return_destination_uses_an_exact_allowlist() -> None:
     for value, expected in allowed.items():
         assert safe_ui_return(value) == expected
 
+    assert safe_ui_return("/ui/calendar?date=2026-09-03") == "/ui/calendar?date=2026-09-03"
+    assert (
+        safe_ui_return("/ui/calendar?date=2026-09-03&lesson=09:00")
+        == "/ui/calendar?date=2026-09-03&lesson=09:00"
+    )
+
     for unsafe in (
         "https://example.com/ui/tasks",
         "//example.com/ui/tasks",
         "/ui\\example.com",
         "/ui/tasks?filter=done&next=https://example.com",
         "/ui/calendar?date=not-validated",
+        "/ui/calendar?date=2026-02-30",
+        "/ui/calendar?date=2026-09-03&lesson=25:00",
+        "/ui/calendar?date=2026-09-03&next=https://example.com",
     ):
         assert safe_ui_return(unsafe) == "/ui/tasks"
+
+
+def test_calendar_task_returns_to_selected_day(client: TestClient) -> None:
+    headers = register_and_login(client, "calendar-return@example.com")
+    client.get("/ui/calendar", headers=headers)
+    csrf_token = client.cookies.get("csrf_token")
+
+    response = client.post(
+        "/ui/tasks/new",
+        headers=headers,
+        data={
+            "title": "Задача для пары",
+            "return_to": "/ui/calendar?date=2026-09-03&lesson=09:00",
+            "csrf_token": csrf_token,
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/ui/calendar?date=2026-09-03&lesson=09:00"
+
+
+def test_react_preview_uses_same_origin_built_assets(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    headers = register_and_login(client, "react-preview@example.com")
+    monkeypatch.setattr(
+        "app.routers.ui.dashboard.preview_assets",
+        lambda: {
+            "preview_script": "/static/react/assets/main-test.js",
+            "preview_styles": ["/static/react/assets/main-test.css"],
+        },
+    )
+
+    response = client.get("/ui/preview", headers=headers)
+
+    assert response.status_code == 200
+    assert '<script id="preview-data" type="application/json">' in response.text
+    assert 'src="/static/react/assets/main-test.js"' in response.text
+    assert 'href="/static/react/assets/main-test.css"' in response.text
+    assert "'unsafe-inline'" not in response.headers["Content-Security-Policy"]
 
 
 def test_web_pages_load_external_page_assets(client: TestClient) -> None:

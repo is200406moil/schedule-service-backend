@@ -14,6 +14,8 @@ htmlcov/
 dist/
 build/
 rtu-mirea-schedule/
+frontend/node_modules/
+app/static/react/
 
 # Local editor and AI-assistant settings
 .cursor/
