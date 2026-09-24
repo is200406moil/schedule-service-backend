@@ -11,6 +11,10 @@ export type CalendarBootData = BootData & {
   initialLesson: string | null;
 };
 
+export type TasksBootData = BootData & {
+  initialFilter: string | null;
+};
+
 export type NewTask = {
   title: string;
   body: string | null;
@@ -25,6 +29,8 @@ export type Task = {
   subject: string | null;
   status: "todo" | "done";
   due_at: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export type Lesson = {

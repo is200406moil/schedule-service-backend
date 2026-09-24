@@ -25,7 +25,7 @@ export function TaskPanel({ tasks, today, pendingId, onComplete, onRetry }: Prop
           <p className="eyebrow">В фокусе</p>
           <h2 id="tasks-heading">Ближайшие задачи</h2>
         </div>
-        <a className="panel-link" href="/ui/tasks" aria-label="Открыть все задачи"><ArrowUpRight size={19} aria-hidden="true" /></a>
+        <a className="panel-link" href="/ui/tasks/preview" aria-label="Открыть все задачи"><ArrowUpRight size={19} aria-hidden="true" /></a>
       </div>
 
       {tasks.kind === "loading" ? (
@@ -41,7 +41,7 @@ export function TaskPanel({ tasks, today, pendingId, onComplete, onRetry }: Prop
           <span className="tasks-empty-mark"><Check size={22} aria-hidden="true" /></span>
           <h3>{tasks.data.length === 0 ? "Задач пока нет" : "Все задачи выполнены"}</h3>
           <p>{tasks.data.length === 0 ? "Добавьте первую задачу со сроком или без него." : "Новые задачи появятся здесь."}</p>
-          <a href="/ui/tasks/new">Создать задачу</a>
+          <a href="/ui/tasks/new?return_to=/ui/preview">Создать задачу</a>
         </div>
       ) : (
         <>
@@ -56,7 +56,7 @@ export function TaskPanel({ tasks, today, pendingId, onComplete, onRetry }: Prop
                   onClick={() => onComplete(task.id)}
                   aria-label={`Отметить задачу «${task.title}» выполненной`}
                 ><Check size={16} aria-hidden="true" /></button>
-                <a className="task-content" href={`/ui/tasks/${task.id}/edit`}>
+                <a className="task-content" href={`/ui/tasks/${task.id}/edit?return_to=/ui/preview`}>
                   <strong>{task.title}</strong>
                   {task.subject ? <span className="task-subject">{task.subject}</span> : null}
                   <span className={`task-due${isOverdue(task) ? " is-overdue" : ""}`}>{formatDue(task.due_at, today)}</span>
@@ -64,7 +64,7 @@ export function TaskPanel({ tasks, today, pendingId, onComplete, onRetry }: Prop
               </li>
             ))}
           </ul>
-          <a className="task-add-link" href="/ui/tasks/new"><Plus size={17} aria-hidden="true" /> Добавить задачу</a>
+          <a className="task-add-link" href="/ui/tasks/new?return_to=/ui/preview"><Plus size={17} aria-hidden="true" /> Добавить задачу</a>
         </>
       )}
     </section>

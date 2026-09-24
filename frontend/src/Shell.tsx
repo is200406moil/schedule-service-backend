@@ -5,10 +5,11 @@ import type { BootData } from "./types";
 const navigation = [
   { href: "/ui/preview", label: "Обзор", icon: LayoutDashboard, section: "overview" },
   { href: "/ui/calendar/preview", label: "Календарь", icon: CalendarDays, section: "calendar" },
-  { href: "/ui/tasks", label: "Задачи", icon: ClipboardList, section: "tasks" },
+  { href: "/ui/tasks/preview", label: "Задачи", icon: ClipboardList, section: "tasks" },
 ] as const;
 
-export function Shell({ user, children, section = "overview" }: { user: BootData; children: ReactNode; section?: "overview" | "calendar" | "tasks" }) {
+export function Shell({ user, children, section = "overview", createReturnTo }: { user: BootData; children: ReactNode; section?: "overview" | "calendar" | "tasks"; createReturnTo?: string }) {
+  const returnTo = createReturnTo ?? (section === "calendar" ? "/ui/calendar/preview" : section === "tasks" ? "/ui/tasks/preview" : "/ui/preview");
   return (
     <div className="shell">
       <a className="skip-link" href="#main">Перейти к содержимому</a>
@@ -37,7 +38,7 @@ export function Shell({ user, children, section = "overview" }: { user: BootData
 
       <header className="mobile-header">
         <a className="mobile-brand" href="/ui/preview"><span className="mobile-brand-mark">м</span> мой семестр<span>.</span></a>
-        <a className="mobile-add" href="/ui/tasks/new" aria-label="Создать задачу"><Plus size={22} aria-hidden="true" /></a>
+        <a className="mobile-add" href={`/ui/tasks/new?return_to=${encodeURIComponent(returnTo)}`} aria-label="Создать задачу"><Plus size={22} aria-hidden="true" /></a>
       </header>
 
       <main id="main" className="workspace" tabIndex={-1}>{children}</main>

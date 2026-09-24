@@ -43,6 +43,15 @@ export function completeTask(id: number, csrfToken: string): Promise<void> {
   return setTaskStatus(id, "done", csrfToken);
 }
 
+export async function deleteTask(id: number, csrfToken: string): Promise<void> {
+  const response = await fetch(`/tasks/${id}`, {
+    method: "DELETE",
+    credentials: "same-origin",
+    headers: { "X-CSRF-Token": csrfToken },
+  });
+  requireOk(response);
+}
+
 export async function createTask(data: NewTask, csrfToken: string): Promise<Task> {
   const response = await fetch("/tasks", {
     method: "POST",

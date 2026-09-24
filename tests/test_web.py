@@ -1,3 +1,5 @@
+import json
+import re
 from datetime import UTC, datetime, timedelta, timezone
 
 from fastapi.testclient import TestClient
@@ -212,6 +214,11 @@ def test_task_return_destination_uses_an_exact_allowlist() -> None:
         "/ui/profile": "/ui/profile",
         "/ui/tasks": "/ui/tasks",
         "/ui/tasks?filter=overdue": "/ui/tasks?filter=overdue",
+        "/ui/tasks/preview": "/ui/tasks/preview",
+        "/ui/tasks/preview?filter=active": "/ui/tasks/preview?filter=active",
+        "/ui/tasks/preview?filter=today": "/ui/tasks/preview?filter=today",
+        "/ui/tasks/preview?filter=overdue": "/ui/tasks/preview?filter=overdue",
+        "/ui/tasks/preview?filter=done": "/ui/tasks/preview?filter=done",
     }
 
     for value, expected in allowed.items():
@@ -232,6 +239,11 @@ def test_task_return_destination_uses_an_exact_allowlist() -> None:
         "//example.com/ui/tasks",
         "/ui\\example.com",
         "/ui/tasks?filter=done&next=https://example.com",
+        "/ui/tasks/preview?filter=all",
+        "/ui/tasks/preview?filter=active&next=https://example.com",
+        "/ui/tasks/preview?filter=active&filter=done",
+        "/ui/tasks/preview/extra",
+        "/ui/tasks/preview#done",
         "/ui/calendar?date=not-validated",
         "/ui/calendar?date=2026-02-30",
         "/ui/calendar?date=2026-09-03&lesson=25:00",
@@ -281,6 +293,47 @@ def test_react_preview_uses_same_origin_built_assets(
     assert '<script id="preview-data" type="application/json">' in response.text
     assert 'src="/static/react/assets/main-test.js"' in response.text
     assert 'href="/static/react/assets/main-test.css"' in response.text
+    assert "'unsafe-inline'" not in response.headers["Content-Security-Policy"]
+
+
+def test_react_tasks_preview_redirects_unauthenticated_user(client: TestClient) -> None:
+    response = client.get("/ui/tasks/preview", follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/ui/login"
+
+
+def test_react_tasks_preview_boots_selected_filter_and_same_origin_assets(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    headers = register_and_login(client, "react-tasks@example.com")
+    requested_entries: list[str] = []
+
+    def fake_preview_assets(entry: str) -> dict[str, object]:
+        requested_entries.append(entry)
+        return {
+            "preview_script": "/static/react/assets/tasks-test.js",
+            "preview_styles": ["/static/react/assets/tasks-test.css"],
+        }
+
+    monkeypatch.setattr("app.routers.ui.tasks.preview_assets", fake_preview_assets)
+
+    response = client.get("/ui/tasks/preview?filter=today", headers=headers)
+
+    assert response.status_code == 200
+    assert requested_entries == ["src/tasks-main.tsx"]
+    assert "Задачи · Мой семестр" in response.text
+    boot_match = re.search(
+        r'<script id="preview-data" type="application/json">(.*?)</script>',
+        response.text,
+    )
+    assert boot_match is not None
+    boot_data = json.loads(boot_match.group(1))
+    assert boot_data["initialFilter"] == "today"
+    assert boot_data["csrfToken"] == client.cookies.get("csrf_token")
+    assert 'src="/static/react/assets/tasks-test.js"' in response.text
+    assert 'href="/static/react/assets/tasks-test.css"' in response.text
     assert "'unsafe-inline'" not in response.headers["Content-Security-Policy"]
 
 

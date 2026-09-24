@@ -21,7 +21,7 @@
   </tr>
 </table>
 
-Новый обзор на React и TypeScript доступен после входа по адресу `/ui/preview`, а новый календарь — по адресу `/ui/calendar/preview`. В календаре можно выбрать день месяца, посмотреть пары своей группы и задачи на этот день, создать задачу и менять её статус. Прежние страницы `/ui` и `/ui/calendar` остаются доступными для сравнения.
+Новые обзор, календарь и список задач на React и TypeScript доступны после входа по адресам `/ui/preview`, `/ui/calendar/preview` и `/ui/tasks/preview`. В календаре можно выбрать день, посмотреть пары и задачи, создать задачу и изменить её статус. В списке задач есть фильтры, группировка по срокам, отметка выполнения и удаление с подтверждением. Редактирование пока открывается в прежней форме. Серверные страницы `/ui`, `/ui/calendar` и `/ui/tasks` остаются доступны для сравнения.
 
 ## Что умеет приложение
 
@@ -70,6 +70,7 @@ docker compose up --build
 - приложение: <http://localhost:8000/ui>;
 - новый обзор для сравнения: <http://localhost:8000/ui/preview>;
 - новый календарь для сравнения: <http://localhost:8000/ui/calendar/preview>;
+- новый список задач для сравнения: <http://localhost:8000/ui/tasks/preview>;
 - API основного приложения: <http://localhost:8000/docs>;
 - API расписания: <http://localhost:5000/docs>;
 - проверка процесса: <http://localhost:8000/health>;
@@ -85,7 +86,7 @@ docker compose down
 
 ## Технологии
 
-Python 3.12, FastAPI, SQLAlchemy, PostgreSQL, Alembic, MongoDB, Jinja2, React, TypeScript, Vite, Docker Compose, Pytest и Ruff. React пока используется только на страницах предварительного обзора и календаря.
+Python 3.12, FastAPI, SQLAlchemy, PostgreSQL, Alembic, MongoDB, Jinja2, React, TypeScript, Vite, Docker Compose, Pytest и Ruff. React пока используется на страницах предварительного обзора, календаря и списка задач.
 
 ## Проверки
 

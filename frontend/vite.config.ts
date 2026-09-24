@@ -13,6 +13,7 @@ export default defineConfig({
       input: {
         overview: resolve(import.meta.dirname, "src/main.tsx"),
         calendar: resolve(import.meta.dirname, "src/calendar-main.tsx"),
+        tasks: resolve(import.meta.dirname, "src/tasks-main.tsx"),
       },
     },
   },

@@ -14,10 +14,37 @@ from app.models import Task, User
 from app.schemas.task import TaskCreate, TaskUpdate
 from app.services import task_service
 from app.web.forms import login_redirect, parse_due_at, safe_ui_return
+from app.web.frontend import preview_assets
 from app.web.presentation import is_overdue, moscow_today, task_sections
 from app.web.templates import templates
 
 router = APIRouter()
+
+
+@router.get("/tasks/preview", include_in_schema=False)
+def tasks_preview(
+    request: Request,
+    user: User | None = Depends(get_current_user_optional),
+):
+    if user is None:
+        return login_redirect()
+    return templates.TemplateResponse(
+        request=request,
+        name="preview.html",
+        context={
+            "user": user,
+            "page_title": "Задачи",
+            **preview_assets("src/tasks-main.tsx"),
+            "preview_data": {
+                "firstName": user.first_name or "",
+                "group": user.group_name or "",
+                "avatar": user.avatar_base64 or "",
+                "today": moscow_today().isoformat(),
+                "csrfToken": request.state.csrf_token,
+                "initialFilter": request.query_params.get("filter"),
+            },
+        },
+    )
 
 
 def _task_form_values(task: Task | None = None) -> dict[str, str | bool]:

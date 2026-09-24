@@ -24,6 +24,11 @@ def test_preview_assets_resolve_local_vite_manifest(monkeypatch, tmp_path) -> No
                     "imports": ["_shared.js"],
                     "css": ["assets/calendar-test.css"],
                 },
+                "src/tasks-main.tsx": {
+                    "file": "assets/tasks-test.js",
+                    "imports": ["_shared.js"],
+                    "css": ["assets/tasks-test.css"],
+                },
             }
         ),
         encoding="utf-8",
@@ -39,6 +44,13 @@ def test_preview_assets_resolve_local_vite_manifest(monkeypatch, tmp_path) -> No
         "preview_styles": [
             "/static/react/assets/shared-test.css",
             "/static/react/assets/calendar-test.css",
+        ],
+    }
+    assert frontend.preview_assets("src/tasks-main.tsx") == {
+        "preview_script": "/static/react/assets/tasks-test.js",
+        "preview_styles": [
+            "/static/react/assets/shared-test.css",
+            "/static/react/assets/tasks-test.css",
         ],
     }
 

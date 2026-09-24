@@ -1,7 +1,7 @@
 import { Shell } from "./Shell";
 import type { BootData } from "./types";
 
-export function SessionEnded({ user, section }: { user: BootData; section: "overview" | "calendar" }) {
+export function SessionEnded({ user, section }: { user: BootData; section: "overview" | "calendar" | "tasks" }) {
   return (
     <Shell user={user} section={section}>
       <div className="workspace-inner">

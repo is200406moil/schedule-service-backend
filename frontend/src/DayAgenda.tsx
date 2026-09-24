@@ -46,7 +46,7 @@ export function DayAgenda({ date, group, schedule, onRetry }: Props) {
           <CalendarDays size={25} aria-hidden="true" />
           <h3>Пар на этот день нет</h3>
           <p>Можно заняться задачами или посмотреть другие дни.</p>
-          <a href="/ui/tasks">Открыть задачи</a>
+          <a href="/ui/tasks/preview">Открыть задачи</a>
         </div>
       ) : (
         <>

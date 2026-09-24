@@ -88,7 +88,7 @@ export function App({ boot }: { boot: BootData }) {
             <h1 id="page-title">Пары и дела<br /><em>на день.</em></h1>
             <p>{boot.firstName ? `${boot.firstName}, ` : ""}выберите день недели и посмотрите, что запланировано.</p>
             <div className="hero-actions">
-              <a className="primary-action" href="/ui/tasks/new"><Plus size={18} aria-hidden="true" /> Новая задача</a>
+              <a className="primary-action" href="/ui/tasks/new?return_to=/ui/preview"><Plus size={18} aria-hidden="true" /> Новая задача</a>
               <a className="quiet-action" href="/ui/calendar/preview">Открыть календарь <ArrowUpRight size={17} aria-hidden="true" /></a>
             </div>
           </div>
@@ -96,7 +96,7 @@ export function App({ boot }: { boot: BootData }) {
             <span className="hero-aside-label">Ваш план</span>
             <div className="hero-stat"><BookOpenText size={19} aria-hidden="true" /><strong>{schedule.kind === "ready" ? dayLessons.length : "—"}</strong><span>{lessonWord(dayLessons.length)} на день</span></div>
             <div className="hero-stat"><CheckCheck size={19} aria-hidden="true" /><strong>{tasks.kind === "ready" ? activeTasks.length : "—"}</strong><span>{taskWord(activeTasks.length)} в работе</span></div>
-            {overdueCount > 0 ? <p className="hero-alert">Просрочено: {overdueCount}. <a href="/ui/tasks?filter=overdue">Посмотреть</a></p> : null}
+            {overdueCount > 0 ? <p className="hero-alert">Просрочено: {overdueCount}. <a href="/ui/tasks/preview?filter=overdue">Посмотреть</a></p> : null}
             <a className="hero-group" href="/ui/profile">{boot.group || "Указать учебную группу"}<ArrowUpRight size={15} aria-hidden="true" /></a>
           </div>
         </section>

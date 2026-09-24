@@ -10,10 +10,16 @@ from app.core.time import normalize_due_at
 
 _SAFE_UI_RETURNS = {
     "/ui": "/ui",
+    "/ui/preview": "/ui/preview",
     "/ui/calendar": "/ui/calendar",
     "/ui/calendar/preview": "/ui/calendar/preview",
     "/ui/profile": "/ui/profile",
     "/ui/tasks": "/ui/tasks",
+    "/ui/tasks/preview": "/ui/tasks/preview",
+    "/ui/tasks/preview?filter=active": "/ui/tasks/preview?filter=active",
+    "/ui/tasks/preview?filter=today": "/ui/tasks/preview?filter=today",
+    "/ui/tasks/preview?filter=overdue": "/ui/tasks/preview?filter=overdue",
+    "/ui/tasks/preview?filter=done": "/ui/tasks/preview?filter=done",
     "/ui/tasks?filter=active": "/ui/tasks?filter=active",
     "/ui/tasks?filter=today": "/ui/tasks?filter=today",
     "/ui/tasks?filter=overdue": "/ui/tasks?filter=overdue",
