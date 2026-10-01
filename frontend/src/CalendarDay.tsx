@@ -39,7 +39,7 @@ export function CalendarDay({ date, group, schedule, tasks, pendingId, highlight
           <span>{schedule.kind === "ready" ? `${lessons.length} ${lessonWord(lessons.length)}` : ""}</span>
         </div>
         {!group ? (
-          <div className="calendar-inline-empty"><BookOpenText size={22} aria-hidden="true" /><p>Укажите группу в профиле, чтобы увидеть расписание.</p><a href="/ui/profile">Указать группу</a></div>
+          <div className="calendar-inline-empty"><BookOpenText size={22} aria-hidden="true" /><p>Укажите группу в профиле, чтобы увидеть расписание.</p><a href="/ui/profile/preview">Указать группу</a></div>
         ) : schedule.kind === "loading" ? (
           <div className="calendar-skeleton" role="status" aria-label="Загружаем расписание"><span /><span /></div>
         ) : schedule.kind === "error" ? (

@@ -1,4 +1,4 @@
-import type { NewTask, Schedule, Task, TaskEditPayload } from "./types";
+import type { GroupsListResponse, NewTask, ProfileUpdate, Schedule, Task, TaskEditPayload, UserProfile } from "./types";
 
 export class UnauthorizedError extends Error {
   constructor() {
@@ -38,6 +38,28 @@ export function getTask(id: number, signal?: AbortSignal): Promise<Task> {
 
 export function getSchedule(group: string, signal?: AbortSignal): Promise<Schedule> {
   return getJson<Schedule>(`/schedule/${encodeURIComponent(group)}/full_schedule`, signal);
+}
+
+export function getProfile(signal?: AbortSignal): Promise<UserProfile> {
+  return getJson<UserProfile>("/auth/me", signal);
+}
+
+export function getGroups(signal?: AbortSignal): Promise<GroupsListResponse> {
+  return getJson<GroupsListResponse>("/schedule/groups", signal);
+}
+
+export async function updateProfile(data: ProfileUpdate, csrfToken: string): Promise<UserProfile> {
+  const response = await fetch("/auth/me", {
+    method: "PATCH",
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": csrfToken,
+    },
+    body: JSON.stringify(data),
+  });
+  requireOk(response);
+  return (await response.json()) as UserProfile;
 }
 
 export async function setTaskStatus(id: number, status: "todo" | "done", csrfToken: string): Promise<void> {

@@ -15,6 +15,7 @@ export default defineConfig({
         calendar: resolve(import.meta.dirname, "src/calendar-main.tsx"),
         tasks: resolve(import.meta.dirname, "src/tasks-main.tsx"),
         taskEditor: resolve(import.meta.dirname, "src/task-editor-main.tsx"),
+        profile: resolve(import.meta.dirname, "src/profile-main.tsx"),
       },
     },
   },

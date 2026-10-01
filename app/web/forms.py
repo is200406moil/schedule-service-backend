@@ -14,6 +14,7 @@ _SAFE_UI_RETURNS = {
     "/ui/calendar": "/ui/calendar",
     "/ui/calendar/preview": "/ui/calendar/preview",
     "/ui/profile": "/ui/profile",
+    "/ui/profile/preview": "/ui/profile/preview",
     "/ui/tasks": "/ui/tasks",
     "/ui/tasks/preview": "/ui/tasks/preview",
     "/ui/tasks/preview?filter=active": "/ui/tasks/preview?filter=active",

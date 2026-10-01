@@ -10,13 +10,41 @@ from app.core.csrf import validate_csrf_token
 from app.core.deps import get_current_user_optional, get_db
 from app.core.time import as_utc
 from app.models import User
-from app.schemas.user import UserUpdate
+from app.schemas.user import UserRead, UserUpdate
 from app.services import task_service, user_service
 from app.web.forms import encode_avatar_file, login_redirect
-from app.web.presentation import due_label, is_overdue
+from app.web.frontend import preview_assets
+from app.web.presentation import due_label, is_overdue, moscow_today
 from app.web.templates import templates
 
 router = APIRouter()
+
+
+@router.get("/profile/preview", include_in_schema=False)
+def profile_preview(
+    request: Request,
+    user: User | None = Depends(get_current_user_optional),
+):
+    if user is None:
+        return login_redirect()
+    return templates.TemplateResponse(
+        request=request,
+        name="preview.html",
+        context={
+            "user": user,
+            "page_title": "Профиль",
+            **preview_assets("src/profile-main.tsx"),
+            "preview_data": {
+                "firstName": user.first_name or "",
+                "group": user.group_name or "",
+                "avatar": "",  # The profile below already contains the image.
+                "today": moscow_today().isoformat(),
+                "csrfToken": request.state.csrf_token,
+                "profile": UserRead.model_validate(user).model_dump(mode="json"),
+                "initialEdit": request.query_params.get("edit") == "1",
+            },
+        },
+    )
 
 
 def _clean_optional(value: str | None) -> str | None:

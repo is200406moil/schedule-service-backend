@@ -21,6 +21,32 @@ export type TaskEditorBootData = BootData & {
   initialSubject: string | null;
 };
 
+export type UserProfile = {
+  id: number;
+  email: string;
+  is_active: boolean;
+  first_name: string | null;
+  last_name: string | null;
+  patronymic: string | null;
+  birth_date: string | null;
+  group_name: string | null;
+  avatar_base64: string | null;
+};
+
+export type ProfileBootData = BootData & {
+  profile: UserProfile;
+  initialEdit: boolean;
+};
+
+export type ProfileUpdate = Partial<Pick<UserProfile,
+  "first_name" | "last_name" | "patronymic" | "birth_date" | "group_name" | "avatar_base64"
+>>;
+
+export type GroupsListResponse = {
+  count: number;
+  groups: string[];
+};
+
 export type NewTask = {
   title: string;
   body: string | null;

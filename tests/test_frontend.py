@@ -34,6 +34,11 @@ def test_preview_assets_resolve_local_vite_manifest(monkeypatch, tmp_path) -> No
                     "imports": ["_shared.js"],
                     "css": ["assets/task-editor-test.css"],
                 },
+                "src/profile-main.tsx": {
+                    "file": "assets/profile-test.js",
+                    "imports": ["_shared.js"],
+                    "css": ["assets/profile-test.css"],
+                },
             }
         ),
         encoding="utf-8",
@@ -63,6 +68,13 @@ def test_preview_assets_resolve_local_vite_manifest(monkeypatch, tmp_path) -> No
         "preview_styles": [
             "/static/react/assets/shared-test.css",
             "/static/react/assets/task-editor-test.css",
+        ],
+    }
+    assert frontend.preview_assets("src/profile-main.tsx") == {
+        "preview_script": "/static/react/assets/profile-test.js",
+        "preview_styles": [
+            "/static/react/assets/shared-test.css",
+            "/static/react/assets/profile-test.css",
         ],
     }
 

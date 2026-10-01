@@ -28,7 +28,7 @@ export function DayAgenda({ date, group, schedule, onRetry }: Props) {
           <CalendarDays size={25} aria-hidden="true" />
           <h3>Какая у вас группа?</h3>
           <p>Укажите её в профиле, и здесь появятся пары.</p>
-          <a href="/ui/profile">Указать группу</a>
+          <a href="/ui/profile/preview">Указать группу</a>
         </div>
       ) : schedule.kind === "loading" ? (
         <div className="agenda-loading" role="status" aria-label="Загружаем расписание">

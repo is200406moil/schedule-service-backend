@@ -114,7 +114,7 @@ export function App({ boot }: { boot: BootData }) {
             <div className="hero-stat"><BookOpenText size={19} aria-hidden="true" /><strong>{schedule.kind === "ready" ? dayLessons.length : "—"}</strong><span>{lessonWord(dayLessons.length)} на день</span></div>
             <div className="hero-stat"><CheckCheck size={19} aria-hidden="true" /><strong>{tasks.kind === "ready" ? activeTasks.length : "—"}</strong><span>{taskWord(activeTasks.length)} в работе</span></div>
             {overdueCount > 0 ? <p className="hero-alert">Просрочено: {overdueCount}. <a href="/ui/tasks/preview?filter=overdue">Посмотреть</a></p> : null}
-            <a className="hero-group" href="/ui/profile">{boot.group || "Указать учебную группу"}<ArrowUpRight size={15} aria-hidden="true" /></a>
+            <a className="hero-group" href="/ui/profile/preview">{boot.group || "Указать учебную группу"}<ArrowUpRight size={15} aria-hidden="true" /></a>
           </div>
         </section>
 

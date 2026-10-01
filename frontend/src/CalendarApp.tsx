@@ -172,7 +172,7 @@ export function CalendarApp({ boot }: { boot: CalendarBootData }) {
             <div className="calendar-month-toolbar">
               <div className="calendar-month-title">
                 <h2 id="calendar-month-title">{monthLabel(viewMonth)}</h2>
-                <a href="/ui/profile"><GraduationCap size={16} aria-hidden="true" />{boot.group || "Указать группу"}</a>
+                <a href="/ui/profile/preview"><GraduationCap size={16} aria-hidden="true" />{boot.group || "Указать группу"}</a>
               </div>
               <div className="calendar-month-actions">
                 <button type="button" onClick={() => moveMonth(-1)} disabled={shiftMonth(viewMonth, -1) === viewMonth} aria-label="Предыдущий месяц"><ChevronLeft size={19} aria-hidden="true" /></button>

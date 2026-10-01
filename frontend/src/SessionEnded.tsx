@@ -1,14 +1,14 @@
 import { Shell } from "./Shell";
 import type { BootData } from "./types";
 
-export function SessionEnded({ user, section }: { user: BootData; section: "overview" | "calendar" | "tasks" }) {
+export function SessionEnded({ user, section }: { user: BootData; section: "overview" | "calendar" | "tasks" | "profile" }) {
   return (
-    <Shell user={user} section={section}>
+    <Shell user={user} section={section} hideMobileAdd>
       <div className="workspace-inner">
         <section className="session-ended" aria-labelledby="session-title">
           <p className="eyebrow">Мой семестр</p>
           <h1 id="session-title">Нужно войти снова</h1>
-          <p>Вы давно не открывали эту страницу, и сеанс завершился. После входа расписание и задачи снова загрузятся.</p>
+          <p>Сеанс завершился. Войдите, чтобы продолжить работу. Сохранённые данные останутся на месте.</p>
           <a className="primary-action" href="/ui/login">Войти</a>
         </section>
       </div>
