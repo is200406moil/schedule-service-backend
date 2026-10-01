@@ -90,7 +90,7 @@ export function CalendarDay({ date, group, schedule, tasks, pendingId, highlight
                   onClick={() => onToggleTask(task.id)}
                   aria-label={`Задача «${task.title}»`}
                 ><Check size={14} aria-hidden="true" /></button>
-                <a href={`/ui/tasks/${task.id}/edit?return_to=${returnTo}`}>
+                <a href={`/ui/tasks/${task.id}/edit/preview?return_to=${returnTo}`}>
                   <strong>{task.title}</strong>
                   <span>{moscowTime(task.due_at ?? "")}{task.subject ? ` · ${task.subject}` : ""}{isOverdue(task) ? " · срок прошёл" : ""}</span>
                 </a>

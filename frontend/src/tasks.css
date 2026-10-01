@@ -4,7 +4,7 @@
 .tasks-page-header h1 { margin: 0; color: var(--navy); font-size: clamp(40px, 4.5vw, 58px); font-weight: 700; letter-spacing: -.06em; line-height: 1; }
 .tasks-page-header h1 span { color: var(--gold); }
 .tasks-intro { margin: 14px 0 0; color: var(--muted); font-size: 15px; line-height: 1.5; }
-.tasks-create { min-height: 46px; padding: 0 17px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; color: var(--navy); background: var(--gold); border-radius: 9px; font-size: 14px; font-weight: 670; text-decoration: none; white-space: nowrap; transition: background-color .18s ease, transform .18s ease; }
+.tasks-create { min-height: 46px; padding: 0 17px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; color: var(--navy); background: var(--gold); border: 0; border-radius: 9px; font-size: 14px; font-weight: 670; text-decoration: none; white-space: nowrap; transition: background-color .18s ease, transform .18s ease; }
 .tasks-create:hover { background: #ffd491; transform: translateY(-2px); }
 .tasks-create:active { background: #deb074; transform: translateY(0); }
 

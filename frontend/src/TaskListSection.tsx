@@ -25,7 +25,7 @@ export function TaskListSection({ section, today, returnTo, pendingId, onToggle,
       <ul className="tasks-ledger">
         {section.items.map((task) => {
           const overdue = isOverdue(task);
-          const editHref = `/ui/tasks/${task.id}/edit?return_to=${encodeURIComponent(returnTo)}`;
+          const editHref = `/ui/tasks/${task.id}/edit/preview?return_to=${encodeURIComponent(returnTo)}`;
           return (
             <li className={`tasks-ledger-row${task.status === "done" ? " is-done" : ""}${overdue ? " is-overdue" : ""}`} key={task.id}>
               <button

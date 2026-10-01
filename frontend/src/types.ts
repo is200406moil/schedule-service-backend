@@ -15,11 +15,21 @@ export type TasksBootData = BootData & {
   initialFilter: string | null;
 };
 
+export type TaskEditorBootData = BootData & {
+  taskId: number | null;
+  returnTo: string;
+  initialSubject: string | null;
+};
+
 export type NewTask = {
   title: string;
   body: string | null;
   subject: string | null;
-  due_at: string;
+  due_at: string | null;
+};
+
+export type TaskEditPayload = NewTask & {
+  status: "todo" | "done";
 };
 
 export type Task = {

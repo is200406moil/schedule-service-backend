@@ -47,6 +47,33 @@ def tasks_preview(
     )
 
 
+def _task_editor_preview(request: Request, user: User, *, task_id: int | None, page_title: str):
+    subject = request.query_params.get("subject")
+    requested_return = request.query_params.get("return_to")
+    return_to = safe_ui_return(requested_return)
+    if requested_return is None or (return_to == "/ui/tasks" and requested_return != "/ui/tasks"):
+        return_to = "/ui/tasks/preview"
+    return templates.TemplateResponse(
+        request=request,
+        name="preview.html",
+        context={
+            "user": user,
+            "page_title": page_title,
+            **preview_assets("src/task-editor-main.tsx"),
+            "preview_data": {
+                "firstName": user.first_name or "",
+                "group": user.group_name or "",
+                "avatar": user.avatar_base64 or "",
+                "today": moscow_today().isoformat(),
+                "csrfToken": request.state.csrf_token,
+                "taskId": task_id,
+                "returnTo": return_to,
+                "initialSubject": subject[:255] if subject is not None else None,
+            },
+        },
+    )
+
+
 def _task_form_values(task: Task | None = None) -> dict[str, str | bool]:
     return {
         "title": task.title if task else "",
@@ -152,6 +179,16 @@ def task_new_form(
     )
 
 
+@router.get("/tasks/new/preview", include_in_schema=False)
+def task_new_preview(
+    request: Request,
+    user: User | None = Depends(get_current_user_optional),
+):
+    if user is None:
+        return login_redirect()
+    return _task_editor_preview(request, user, task_id=None, page_title="Новая задача")
+
+
 @router.post("/tasks/new")
 def task_new_submit(
     request: Request,
@@ -221,6 +258,17 @@ def task_edit_form(
         heading="Редактировать задачу",
         return_to=safe_ui_return(request.query_params.get("return_to")),
     )
+
+
+@router.get("/tasks/{task_id}/edit/preview", include_in_schema=False)
+def task_edit_preview(
+    request: Request,
+    task_id: int,
+    user: User | None = Depends(get_current_user_optional),
+):
+    if user is None:
+        return login_redirect()
+    return _task_editor_preview(request, user, task_id=task_id, page_title="Редактировать задачу")
 
 
 @router.post("/tasks/{task_id}/edit")

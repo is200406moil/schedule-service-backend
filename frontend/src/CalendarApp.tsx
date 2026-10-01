@@ -5,9 +5,10 @@ import { CalendarDay } from "./CalendarDay";
 import { monthDates, monthLabel, parseCalendarDate, shiftMonth } from "./calendarDates";
 import { formatDate, lessonWord, lessonsForDate, moscowDateKey, taskDueOn, taskWord } from "./dates";
 import { MonthGrid } from "./MonthGrid";
-import { QuickTaskDialog } from "./QuickTaskDialog";
+import { TaskCreateDialog } from "./TaskCreateDialog";
 import { SessionEnded } from "./SessionEnded";
 import { Shell } from "./Shell";
+import { subjectNames } from "./taskEditorModel";
 import type { CalendarBootData, Lesson, Loadable, NewTask, Schedule, Task } from "./types";
 
 export function CalendarApp({ boot }: { boot: CalendarBootData }) {
@@ -121,9 +122,17 @@ export function CalendarApp({ boot }: { boot: CalendarBootData }) {
   async function handleCreate(data: NewTask) {
     try {
       const created = await createTask(data, boot.csrfToken);
-      if (tasks.kind === "ready") setTasks({ kind: "ready", data: [...tasks.data, created] });
-      else setTaskRetry((value) => value + 1);
-      setNotice("Задача добавлена");
+      setTasks((current) => current.kind === "ready"
+        ? { kind: "ready", data: [...current.data, created] }
+        : current);
+      if (tasks.kind !== "ready") setTaskRetry((value) => value + 1);
+      if (created.due_at) {
+        const dueDate = moscowDateKey(created.due_at);
+        if (dueDate !== selectedDate) selectDate(dueDate);
+        setNotice("Задача добавлена");
+      } else {
+        setNotice("Задача без срока добавлена в раздел «Задачи».");
+      }
     } catch (error) {
       if (error instanceof UnauthorizedError) setSessionExpired(true);
       throw error;
@@ -135,10 +144,15 @@ export function CalendarApp({ boot }: { boot: CalendarBootData }) {
     setDialogOpen(true);
   }
 
+  function openCreate() {
+    setTaskPreset(null);
+    setDialogOpen(true);
+  }
+
   if (sessionExpired) return <SessionEnded user={boot} section="calendar" />;
 
   return (
-    <Shell user={boot} section="calendar">
+    <Shell user={boot} section="calendar" onCreateTask={openCreate}>
       <div className="workspace-inner calendar-view">
         <div className="page-topline">
           <span>{formatDate(boot.today, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span>
@@ -149,7 +163,7 @@ export function CalendarApp({ boot }: { boot: CalendarBootData }) {
             <h1>Календарь</h1>
             <p>Пары и сроки задач — по дням.</p>
           </div>
-          <button type="button" className="calendar-create" onClick={() => { setTaskPreset(null); setDialogOpen(true); }}><Plus size={18} aria-hidden="true" /> Новая задача</button>
+          <button type="button" className="calendar-create" onClick={openCreate}><Plus size={18} aria-hidden="true" /> Новая задача</button>
         </header>
 
         <div className="calendar-layout">
@@ -179,12 +193,20 @@ export function CalendarApp({ boot }: { boot: CalendarBootData }) {
             onRetrySchedule={() => setScheduleRetry((value) => value + 1)}
             onRetryTasks={() => setTaskRetry((value) => value + 1)}
             onToggleTask={handleToggleTask}
-            onAddTask={() => { setTaskPreset(null); setDialogOpen(true); }}
+            onAddTask={openCreate}
             onAddForLesson={addForLesson}
           />
         </div>
       </div>
-      <QuickTaskDialog open={dialogOpen} date={selectedDate} preset={taskPreset} onClose={() => setDialogOpen(false)} onCreate={handleCreate} />
+      <TaskCreateDialog
+        open={dialogOpen}
+        group={boot.group}
+        initialDueAt={`${selectedDate}T${taskPreset?.time || "18:00"}`}
+        initialSubject={taskPreset?.subject}
+        subjects={schedule.kind === "ready" ? subjectNames(schedule.data) : undefined}
+        onClose={() => setDialogOpen(false)}
+        onCreate={handleCreate}
+      />
       <div className={`notice${notice ? " is-visible" : ""}`} role="status" aria-live="polite">{notice}</div>
     </Shell>
   );

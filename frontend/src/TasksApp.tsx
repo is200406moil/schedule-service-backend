@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
 import { ArrowUpRight, ClipboardList, Plus } from "lucide-react";
-import { deleteTask, getTasks, setTaskStatus, UnauthorizedError } from "./api";
+import { createTask, deleteTask, getTasks, setTaskStatus, UnauthorizedError } from "./api";
 import { formatDate, taskWord } from "./dates";
 import { Shell } from "./Shell";
 import { SessionEnded } from "./SessionEnded";
 import { TaskDeleteDialog } from "./TaskDeleteDialog";
+import { TaskCreateDialog } from "./TaskCreateDialog";
 import { TaskListSection } from "./TaskListSection";
 import { deriveTaskView, normalizeTaskFilter } from "./taskView";
 import type { TaskFilter } from "./taskView";
-import type { Loadable, Task, TasksBootData } from "./types";
+import type { Loadable, NewTask, Task, TasksBootData } from "./types";
 
 const filters: ReadonlyArray<{ key: TaskFilter; label: string }> = [
   { key: "all", label: "Все" },
@@ -37,6 +38,8 @@ export function TasksApp({ boot }: { boot: TasksBootData }) {
   const [deleteTarget, setDeleteTarget] = useState<Task | null>(null);
   const [notice, setNotice] = useState("");
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [filter, setFilter] = useState(() => normalizeTaskFilter(boot.initialFilter));
 
   useEffect(() => {
     const controller = new AbortController();
@@ -57,11 +60,28 @@ export function TasksApp({ boot }: { boot: TasksBootData }) {
     return () => window.clearTimeout(timeout);
   }, [notice]);
 
-  const filter = normalizeTaskFilter(boot.initialFilter);
   const taskList = tasks.kind === "ready" ? tasks.data : [];
   const view = deriveTaskView(taskList, filter, boot.today);
   const returnTo = filterHref(filter);
-  const createHref = `/ui/tasks/new?return_to=${encodeURIComponent(returnTo)}`;
+
+  async function handleCreate(data: NewTask) {
+    try {
+      const created = await createTask(data, boot.csrfToken);
+      setTasks((current) => current.kind === "ready"
+        ? { kind: "ready", data: [...current.data, created] }
+        : current);
+      if (tasks.kind !== "ready") setRetry((value) => value + 1);
+      const visible = deriveTaskView([created], filter, boot.today).sections.length > 0;
+      if (!visible) {
+        setFilter("all");
+        window.history.replaceState(window.history.state, "", filterHref("all"));
+      }
+      setNotice(visible ? "Задача добавлена" : "Задача добавлена. Открыт список всех задач.");
+    } catch (error) {
+      if (error instanceof UnauthorizedError) setSessionExpired(true);
+      throw error;
+    }
+  }
 
   async function handleToggle(task: Task) {
     if (pendingId !== null) return;
@@ -97,7 +117,7 @@ export function TasksApp({ boot }: { boot: TasksBootData }) {
   if (sessionExpired) return <SessionEnded user={boot} section="tasks" />;
 
   return (
-    <Shell user={boot} section="tasks" createReturnTo={returnTo}>
+    <Shell user={boot} section="tasks" createReturnTo={returnTo} onCreateTask={() => setCreateOpen(true)}>
       <div className="workspace-inner tasks-view">
         <div className="page-topline">
           <span>{formatDate(boot.today, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span>
@@ -110,7 +130,7 @@ export function TasksApp({ boot }: { boot: TasksBootData }) {
             <h1>Задачи<span aria-hidden="true">.</span></h1>
             <p className="tasks-intro">Дела со сроком и без него — в одном списке.</p>
           </div>
-          <a className="tasks-create" href={createHref}><Plus size={18} aria-hidden="true" /> Новая задача</a>
+          <button type="button" className="tasks-create" onClick={() => setCreateOpen(true)}><Plus size={18} aria-hidden="true" /> Новая задача</button>
         </header>
 
         <nav className="tasks-filters" aria-label="Фильтр задач">
@@ -145,7 +165,7 @@ export function TasksApp({ boot }: { boot: TasksBootData }) {
                 <span className="tasks-empty-icon"><ClipboardList size={24} strokeWidth={1.7} aria-hidden="true" /></span>
                 <h2>{emptyCopy[filter].title}</h2>
                 <p>{emptyCopy[filter].detail}</p>
-                {filter === "all" ? <a href={createHref}><Plus size={17} aria-hidden="true" /> Добавить задачу</a> : null}
+                {filter === "all" ? <button type="button" onClick={() => setCreateOpen(true)}><Plus size={17} aria-hidden="true" /> Добавить задачу</button> : null}
               </div>
             )}
           </div>
@@ -159,6 +179,7 @@ export function TasksApp({ boot }: { boot: TasksBootData }) {
           <div className="tasks-loading" role="status" aria-label="Загружаем задачи"><span /><span /><span /></div>
         )}
       </div>
+      <TaskCreateDialog open={createOpen} group={boot.group} onClose={() => setCreateOpen(false)} onCreate={handleCreate} />
       <TaskDeleteDialog task={deleteTarget} onClose={() => setDeleteTarget(null)} onDelete={handleDelete} />
       <div className={`notice${notice ? " is-visible" : ""}`} role="status" aria-live="polite">{notice}</div>
     </Shell>

@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { ArrowUpRight, BookOpenText, CheckCheck, Plus } from "lucide-react";
-import { completeTask, getSchedule, getTasks, UnauthorizedError } from "./api";
+import { completeTask, createTask, getSchedule, getTasks, UnauthorizedError } from "./api";
 import { addDays, formatDate, isOverdue, lessonWord, lessonsForDate, taskWord } from "./dates";
 import { DayAgenda } from "./DayAgenda";
 import { Shell } from "./Shell";
 import { SessionEnded } from "./SessionEnded";
+import { TaskCreateDialog } from "./TaskCreateDialog";
 import { TaskPanel } from "./TaskPanel";
+import { subjectNames } from "./taskEditorModel";
 import { WeekStrip } from "./WeekStrip";
-import type { BootData, Loadable, Schedule, Task } from "./types";
+import type { BootData, Loadable, NewTask, Schedule, Task } from "./types";
 
 export function App({ boot }: { boot: BootData }) {
   const [selectedDate, setSelectedDate] = useState(boot.today);
@@ -18,6 +20,7 @@ export function App({ boot }: { boot: BootData }) {
   const [pendingId, setPendingId] = useState<number | null>(null);
   const [notice, setNotice] = useState("");
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -70,12 +73,26 @@ export function App({ boot }: { boot: BootData }) {
     }
   }
 
+  async function handleCreate(data: NewTask) {
+    try {
+      const created = await createTask(data, boot.csrfToken);
+      setTasks((current) => current.kind === "ready"
+        ? { kind: "ready", data: [...current.data, created] }
+        : current);
+      if (tasks.kind !== "ready") setTaskRetry((value) => value + 1);
+      setNotice("Задача добавлена");
+    } catch (error) {
+      if (error instanceof UnauthorizedError) setSessionExpired(true);
+      throw error;
+    }
+  }
+
   if (sessionExpired) {
     return <SessionEnded user={boot} section="overview" />;
   }
 
   return (
-    <Shell user={boot}>
+    <Shell user={boot} onCreateTask={() => setCreateOpen(true)}>
       <div className="workspace-inner">
         <header className="page-topline">
           <span>{formatDate(boot.today, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span>
@@ -88,7 +105,7 @@ export function App({ boot }: { boot: BootData }) {
             <h1 id="page-title">Пары и дела<br /><em>на день.</em></h1>
             <p>{boot.firstName ? `${boot.firstName}, ` : ""}выберите день недели и посмотрите, что запланировано.</p>
             <div className="hero-actions">
-              <a className="primary-action" href="/ui/tasks/new?return_to=/ui/preview"><Plus size={18} aria-hidden="true" /> Новая задача</a>
+              <button type="button" className="primary-action" onClick={() => setCreateOpen(true)}><Plus size={18} aria-hidden="true" /> Новая задача</button>
               <a className="quiet-action" href="/ui/calendar/preview">Открыть календарь <ArrowUpRight size={17} aria-hidden="true" /></a>
             </div>
           </div>
@@ -112,9 +129,10 @@ export function App({ boot }: { boot: BootData }) {
 
         <div className="content-grid">
           <DayAgenda date={selectedDate} group={boot.group} schedule={schedule} onRetry={() => setScheduleRetry((value) => value + 1)} />
-          <TaskPanel tasks={tasks} today={boot.today} pendingId={pendingId} onComplete={handleComplete} onRetry={() => setTaskRetry((value) => value + 1)} />
+          <TaskPanel tasks={tasks} today={boot.today} pendingId={pendingId} onComplete={handleComplete} onRetry={() => setTaskRetry((value) => value + 1)} onCreate={() => setCreateOpen(true)} />
         </div>
       </div>
+      <TaskCreateDialog open={createOpen} group={boot.group} subjects={schedule.kind === "ready" ? subjectNames(schedule.data) : undefined} onClose={() => setCreateOpen(false)} onCreate={handleCreate} />
       <div className={`notice${notice ? " is-visible" : ""}`} role="status" aria-live="polite">{notice}</div>
     </Shell>
   );

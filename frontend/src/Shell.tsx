@@ -8,7 +8,7 @@ const navigation = [
   { href: "/ui/tasks/preview", label: "Задачи", icon: ClipboardList, section: "tasks" },
 ] as const;
 
-export function Shell({ user, children, section = "overview", createReturnTo }: { user: BootData; children: ReactNode; section?: "overview" | "calendar" | "tasks"; createReturnTo?: string }) {
+export function Shell({ user, children, section = "overview", createReturnTo, hideMobileAdd = false, onCreateTask }: { user: BootData; children: ReactNode; section?: "overview" | "calendar" | "tasks"; createReturnTo?: string; hideMobileAdd?: boolean; onCreateTask?: () => void }) {
   const returnTo = createReturnTo ?? (section === "calendar" ? "/ui/calendar/preview" : section === "tasks" ? "/ui/tasks/preview" : "/ui/preview");
   return (
     <div className="shell">
@@ -38,7 +38,9 @@ export function Shell({ user, children, section = "overview", createReturnTo }: 
 
       <header className="mobile-header">
         <a className="mobile-brand" href="/ui/preview"><span className="mobile-brand-mark">м</span> мой семестр<span>.</span></a>
-        <a className="mobile-add" href={`/ui/tasks/new?return_to=${encodeURIComponent(returnTo)}`} aria-label="Создать задачу"><Plus size={22} aria-hidden="true" /></a>
+        {hideMobileAdd ? null : onCreateTask
+          ? <button type="button" className="mobile-add" onClick={onCreateTask} aria-label="Создать задачу"><Plus size={22} aria-hidden="true" /></button>
+          : <a className="mobile-add" href={`/ui/tasks/new/preview?return_to=${encodeURIComponent(returnTo)}`} aria-label="Создать задачу"><Plus size={22} aria-hidden="true" /></a>}
       </header>
 
       <main id="main" className="workspace" tabIndex={-1}>{children}</main>

@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from app.core.time import datetime_local_value, normalize_due_at
 from app.schemas.task import TaskCreate
 from app.web.forms import safe_ui_return
+from app.web.presentation import moscow_today
 from tests.helpers import register_and_login
 
 
@@ -335,6 +336,111 @@ def test_react_tasks_preview_boots_selected_filter_and_same_origin_assets(
     assert 'src="/static/react/assets/tasks-test.js"' in response.text
     assert 'href="/static/react/assets/tasks-test.css"' in response.text
     assert "'unsafe-inline'" not in response.headers["Content-Security-Policy"]
+
+
+def test_react_task_editor_previews_redirect_unauthenticated_user(client: TestClient) -> None:
+    for path in ("/ui/tasks/new/preview", "/ui/tasks/123/edit/preview"):
+        response = client.get(path, follow_redirects=False)
+
+        assert response.status_code == 303
+        assert response.headers["location"] == "/ui/login"
+
+
+def test_react_new_task_editor_preview_boots_subject_and_safe_return(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    headers = register_and_login(client, "react-task-editor-new@example.com")
+    updated = client.patch(
+        "/auth/me",
+        headers=headers,
+        json={"first_name": "Анна", "group_name": "ИКБО-14-23"},
+    )
+    assert updated.status_code == 200
+    requested_entries: list[str] = []
+
+    def fake_preview_assets(entry: str) -> dict[str, object]:
+        requested_entries.append(entry)
+        return {
+            "preview_script": "/static/react/assets/task-editor-test.js",
+            "preview_styles": ["/static/react/assets/task-editor-test.css"],
+        }
+
+    monkeypatch.setattr("app.routers.ui.tasks.preview_assets", fake_preview_assets)
+    subject = "<script>alert('x')</script>" + "М" * 300
+    response = client.get(
+        "/ui/tasks/new/preview",
+        headers=headers,
+        params={
+            "return_to": "/ui/calendar/preview?date=2026-09-03",
+            "subject": subject,
+        },
+    )
+
+    assert response.status_code == 200
+    assert requested_entries == ["src/task-editor-main.tsx"]
+    assert "Новая задача · Мой семестр" in response.text
+    boot_match = re.search(
+        r'<script id="preview-data" type="application/json">(.*?)</script>',
+        response.text,
+    )
+    assert boot_match is not None
+    boot_data = json.loads(boot_match.group(1))
+    assert boot_data == {
+        "firstName": "Анна",
+        "group": "ИКБО-14-23",
+        "avatar": "",
+        "today": moscow_today().isoformat(),
+        "csrfToken": client.cookies.get("csrf_token"),
+        "taskId": None,
+        "returnTo": "/ui/calendar/preview?date=2026-09-03",
+        "initialSubject": subject[:255],
+    }
+    assert "<script>alert" not in response.text
+    assert 'src="/static/react/assets/task-editor-test.js"' in response.text
+    assert 'href="/static/react/assets/task-editor-test.css"' in response.text
+
+
+def test_react_edit_task_editor_preview_exposes_only_task_id(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    owner_headers = register_and_login(client, "react-task-editor-owner@example.com")
+    created = client.post(
+        "/tasks",
+        headers=owner_headers,
+        json={"title": "Owner secret task", "body": "Private task body"},
+    )
+    assert created.status_code == 201
+    task_id = created.json()["id"]
+    other_headers = register_and_login(client, "react-task-editor-other@example.com")
+    monkeypatch.setattr(
+        "app.routers.ui.tasks.preview_assets",
+        lambda entry: {
+            "preview_script": "/static/react/assets/task-editor-test.js",
+            "preview_styles": [],
+        },
+    )
+
+    response = client.get(
+        f"/ui/tasks/{task_id}/edit/preview",
+        headers=other_headers,
+        params={"return_to": "https://outside.example", "subject": "Free text"},
+    )
+
+    assert response.status_code == 200
+    assert "Редактировать задачу · Мой семестр" in response.text
+    boot_match = re.search(
+        r'<script id="preview-data" type="application/json">(.*?)</script>',
+        response.text,
+    )
+    assert boot_match is not None
+    boot_data = json.loads(boot_match.group(1))
+    assert boot_data["taskId"] == task_id
+    assert boot_data["returnTo"] == "/ui/tasks/preview"
+    assert boot_data["initialSubject"] == "Free text"
+    assert "Owner secret task" not in response.text
+    assert "Private task body" not in response.text
 
 
 def test_react_calendar_preview_keeps_date_and_same_origin_assets(

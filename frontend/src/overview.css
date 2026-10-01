@@ -67,5 +67,5 @@
 .task-subject { color: var(--muted); font-size: 12px; }
 .task-due { margin-top: 3px; color: #5b6c70; font-size: 12px; font-variant-numeric: tabular-nums; }
 .task-due.is-overdue { color: var(--danger); font-weight: 650; }
-.task-add-link { min-height: 42px; width: fit-content; margin-top: 13px; padding: 0 7px; display: inline-flex; align-items: center; gap: 7px; color: var(--blue); border-radius: 7px; font-size: 13px; font-weight: 670; text-decoration: none; }
+.task-add-link { min-height: 42px; width: fit-content; margin-top: 13px; padding: 0 7px; display: inline-flex; align-items: center; gap: 7px; color: var(--blue); background: transparent; border: 0; border-radius: 7px; font-size: 13px; font-weight: 670; text-decoration: none; }
 .task-add-link:hover { background: var(--blue-soft); }

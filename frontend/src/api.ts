@@ -1,4 +1,4 @@
-import type { NewTask, Schedule, Task } from "./types";
+import type { NewTask, Schedule, Task, TaskEditPayload } from "./types";
 
 export class UnauthorizedError extends Error {
   constructor() {
@@ -7,9 +7,19 @@ export class UnauthorizedError extends Error {
   }
 }
 
+export class ApiError extends Error {
+  readonly status: number;
+
+  constructor(status: number) {
+    super(`Request failed: ${status}`);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 function requireOk(response: Response): void {
   if (response.status === 401) throw new UnauthorizedError();
-  if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+  if (!response.ok) throw new ApiError(response.status);
 }
 
 async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
@@ -20,6 +30,10 @@ async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
 
 export function getTasks(signal?: AbortSignal): Promise<Task[]> {
   return getJson<Task[]>("/tasks", signal);
+}
+
+export function getTask(id: number, signal?: AbortSignal): Promise<Task> {
+  return getJson<Task>(`/tasks/${id}`, signal);
 }
 
 export function getSchedule(group: string, signal?: AbortSignal): Promise<Schedule> {
@@ -55,6 +69,20 @@ export async function deleteTask(id: number, csrfToken: string): Promise<void> {
 export async function createTask(data: NewTask, csrfToken: string): Promise<Task> {
   const response = await fetch("/tasks", {
     method: "POST",
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": csrfToken,
+    },
+    body: JSON.stringify(data),
+  });
+  requireOk(response);
+  return (await response.json()) as Task;
+}
+
+export async function updateTask(id: number, data: Partial<TaskEditPayload>, csrfToken: string): Promise<Task> {
+  const response = await fetch(`/tasks/${id}`, {
+    method: "PATCH",
     credentials: "same-origin",
     headers: {
       "Content-Type": "application/json",
