@@ -40,6 +40,7 @@ export function AuthPasswordField({ page, error, inputRef, clientError, onInput 
       </div>
       {registration ? <p className="field-hint" id="password-hint">От 8 до 128 символов.</p> : null}
       {clientError ? <p className="field-error" id={errorId} role="alert">{clientError}</p> : null}
+      {!registration ? <a className="auth-recovery-link" href="/ui/forgot-password">Забыли пароль?</a> : null}
     </div>
   );
 }

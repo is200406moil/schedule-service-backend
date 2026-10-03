@@ -1,4 +1,14 @@
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    UploadFile,
+    status,
+)
 from fastapi.responses import RedirectResponse
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
@@ -8,13 +18,20 @@ from app.core.avatar import AvatarValidationError
 from app.core.config import settings
 from app.core.csrf import validate_csrf_token
 from app.core.deps import ACCESS_TOKEN_COOKIE, get_current_user_optional, get_db
-from app.core.rate_limit import login_rate_limit_key, login_rate_limiter
+from app.core.mail import MailSender, get_mail_sender
+from app.core.rate_limit import (
+    get_recovery_confirm_retry_after,
+    get_recovery_request_retry_after,
+    login_rate_limit_key,
+    login_rate_limiter,
+)
 from app.models import User
-from app.schemas.auth import LoginRequest
+from app.schemas.auth import LoginRequest, PasswordResetRequest
 from app.schemas.user import UserCreate
-from app.services import auth_service
+from app.services import auth_service, email_verification_service, password_reset_service
 from app.web.forms import encode_avatar_file
-from app.web.public import public_response
+from app.web.public import public_response, verification_response
+from app.web.public import recovery_response as _recovery_response
 
 router = APIRouter()
 
@@ -56,6 +73,8 @@ def _register_response(
             "error": error,
             "ok": None,
             "email": (form_values or {}).get("email", ""),
+            "mailMode": settings.mail_mode,
+            "verificationRequired": settings.mail_mode != "disabled",
         },
         title="Регистрация",
         status_code=status_code,
@@ -158,6 +177,15 @@ def login_submit(
                 else status.HTTP_401_UNAUTHORIZED
             ),
         )
+    except auth_service.EmailUnverifiedError:
+        login_rate_limiter.reset(rate_limit_key)
+        return verification_response(
+            request,
+            page="email-verification",
+            email=normalized_email,
+            error="unverified",
+            status_code=status.HTTP_403_FORBIDDEN,
+        )
     login_rate_limiter.reset(rate_limit_key)
     token = auth_service.create_access_token_for_user(user)
     return _cookie_response(token, location="/ui")
@@ -176,7 +204,9 @@ def register_page(
 @router.post("/register")
 def register_submit(
     request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
+    sender: MailSender = Depends(get_mail_sender),
     email: str = Form(""),
     password: str = Form(""),
     first_name: str | None = Form(None),
@@ -244,7 +274,7 @@ def register_submit(
         avatar_base64=data.avatar_base64,
     )
     try:
-        auth_service.register_user(db, registration)
+        user = auth_service.register_user(db, registration)
     except auth_service.PasswordTooShortError:
         return _register_response(
             request,
@@ -259,8 +289,16 @@ def register_submit(
             form_values=form_values,
             status_code=status.HTTP_409_CONFLICT,
         )
+    if settings.mail_mode != "disabled":
+        email_verification_service.queue_email_verification(
+            background_tasks, db, user.email, sender
+        )
     return RedirectResponse(
-        url="/ui/login?ok=registered",
+        url=(
+            "/ui/email-verification?ok=registered"
+            if settings.mail_mode != "disabled"
+            else "/ui/login?ok=registered"
+        ),
         status_code=HTTP_303_SEE_OTHER,
     )
 
@@ -270,3 +308,134 @@ def logout(request: Request, csrf_token: str | None = Form(None)):
     validate_csrf_token(request, csrf_token, settings.secret_key)
     response = RedirectResponse(url="/ui/login", status_code=HTTP_303_SEE_OTHER)
     return _clear_auth_cookie(response)
+
+
+def _recovery_redirect(location: str) -> RedirectResponse:
+    return RedirectResponse(
+        url=location,
+        status_code=HTTP_303_SEE_OTHER,
+        headers={"Cache-Control": "no-store", "Referrer-Policy": "no-referrer"},
+    )
+
+
+@router.get("/forgot-password")
+def forgot_password_page(request: Request):
+    return _recovery_response(
+        request,
+        page="forgot-password",
+        ok="requested" if request.query_params.get("ok") == "requested" else None,
+    )
+
+
+@router.post("/forgot-password")
+def forgot_password_submit(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    sender: MailSender = Depends(get_mail_sender),
+    retry_after: int | None = Depends(get_recovery_request_retry_after),
+    email: str = Form(""),
+    csrf_token: str | None = Form(None),
+):
+    submitted_email = email.strip()
+    if retry_after is not None:
+        return _recovery_response(
+            request,
+            page="forgot-password",
+            email=submitted_email,
+            error="rate",
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            retry_after=retry_after,
+        )
+    try:
+        validate_csrf_token(request, csrf_token, settings.secret_key)
+    except HTTPException:
+        return _recovery_response(
+            request,
+            page="forgot-password",
+            email=submitted_email,
+            error="csrf",
+            status_code=status.HTTP_403_FORBIDDEN,
+        )
+    try:
+        data = PasswordResetRequest(email=submitted_email)
+    except ValidationError:
+        return _recovery_response(
+            request,
+            page="forgot-password",
+            email=submitted_email,
+            error="email",
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        )
+    if settings.mail_mode == "disabled":
+        return _recovery_response(
+            request,
+            page="forgot-password",
+            email=submitted_email,
+            error="unavailable",
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+    password_reset_service.queue_password_reset(background_tasks, db, str(data.email), sender)
+    return _recovery_redirect("/ui/forgot-password?ok=requested")
+
+
+@router.get("/password-reset")
+def password_reset_page(request: Request):
+    # Link secrets live in the browser fragment. Opening this page never claims a token.
+    return _recovery_response(request, page="password-reset")
+
+
+@router.post("/password-reset")
+def password_reset_submit(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    sender: MailSender = Depends(get_mail_sender),
+    retry_after: int | None = Depends(get_recovery_confirm_retry_after),
+    token: str = Form(""),
+    password: str = Form(""),
+    password_confirm: str = Form(""),
+    csrf_token: str | None = Form(None),
+):
+    if retry_after is not None:
+        return _recovery_response(
+            request,
+            page="password-reset",
+            error="rate",
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            retry_after=retry_after,
+        )
+    try:
+        validate_csrf_token(request, csrf_token, settings.secret_key)
+    except HTTPException:
+        return _recovery_response(
+            request,
+            page="password-reset",
+            error="csrf",
+            status_code=status.HTTP_403_FORBIDDEN,
+        )
+    if password != password_confirm:
+        return _recovery_response(
+            request,
+            page="password-reset",
+            error="mismatch",
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        )
+    if not auth_service.MIN_PASSWORD_LENGTH <= len(password) <= 128:
+        return _recovery_response(
+            request,
+            page="password-reset",
+            error="password",
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        )
+    try:
+        email = password_reset_service.confirm_password_reset(db, token, password)
+    except password_reset_service.InvalidResetTokenError:
+        return _recovery_response(
+            request,
+            page="password-reset",
+            error="token",
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+    background_tasks.add_task(password_reset_service.send_password_changed, email, sender)
+    return _clear_auth_cookie(_recovery_redirect("/ui/login?ok=password-reset#"))

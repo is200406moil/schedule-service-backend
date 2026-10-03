@@ -51,7 +51,9 @@ describe("public account forms", () => {
     expect(html).toContain('href="mailto:contact@example.com"');
     expect(html).toContain("45 мин.");
     expect(html).toContain("Для локальной учебной версии");
-    expect(html).toContain("Автоматического удаления по сроку");
+    expect(html).toContain("автоматического удаления этих данных по сроку нет");
+    expect(html).toContain("Просроченные записи ссылок восстановления и подтверждения удаляются");
+    expect(html).toContain("Локальные тестовые письма нужно удалять вручную");
     expect(html).toContain("localStorage");
     expect(html).toContain("fastapi.tiangolo.com");
   });

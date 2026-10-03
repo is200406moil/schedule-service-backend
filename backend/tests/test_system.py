@@ -90,6 +90,7 @@ def test_production_accepts_explicit_secure_settings() -> None:
         app_environment="production",
         secret_key="a-production-secret-with-at-least-32-bytes",
         cookie_secure=True,
+        public_base_url="https://semester.example",
     )
 
     assert production.app_environment == "production"

@@ -16,6 +16,7 @@ build/
 rtu-mirea-schedule/
 frontend/node_modules/
 frontend/dist/
+.local/
 
 # Local editor and AI-assistant settings
 .cursor/

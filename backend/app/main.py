@@ -2,20 +2,32 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
-from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exception_handlers import (
+    http_exception_handler,
+    request_validation_exception_handler,
+)
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.clients import ScheduleClient
 from app.core.config import settings
 from app.core.csrf import CSRF_COOKIE, is_valid_csrf_token, issue_csrf_token
 from app.core.deps import get_db
 from app.core.paths import FRONTEND_DIST_DIR
+from app.core.rate_limit import (
+    recovery_client_key,
+    recovery_confirm_limiter,
+    recovery_request_limiter,
+    verification_confirm_limiter,
+    verification_request_limiter,
+)
 from app.routers import auth, schedule, tasks, ui
+from app.web.public import public_response, recovery_response, verification_response
 
 APP_DIR = Path(__file__).resolve().parent
 APP_CONTENT_SECURITY_POLICY = (
@@ -41,12 +53,33 @@ DOCS_CONTENT_SECURITY_POLICY = (
     "form-action 'self'; "
     "object-src 'none'"
 )
+RECOVERY_REQUEST_ROUTES = {"/auth/password-reset/request", "/ui/forgot-password"}
+RECOVERY_CONFIRM_ROUTES = {"/auth/password-reset/confirm", "/ui/password-reset"}
+VERIFICATION_REQUEST_ROUTES = {"/auth/email-verification/request", "/ui/email-verification"}
+VERIFICATION_CONFIRM_ROUTES = {"/auth/email-verification/confirm", "/ui/verify-email"}
+REGISTRATION_ROUTES = {"/auth/register", "/ui/register"}
+PRIVATE_UI_AUTH_ROUTES = {
+    "/ui/login",
+    "/ui/register",
+    "/ui/forgot-password",
+    "/ui/password-reset",
+    "/ui/email-verification",
+    "/ui/verify-email",
+}
 
 
 def content_security_policy(path: str) -> str:
     if path in {"/docs", "/redoc", "/docs/oauth2-redirect"}:
         return DOCS_CONTENT_SECURITY_POLICY
     return APP_CONTENT_SECURITY_POLICY
+
+
+def request_route_path(request: Request) -> str:
+    path = request.scope["path"]
+    root_path = request.scope.get("root_path", "").rstrip("/")
+    if root_path and (path == root_path or path.startswith(f"{root_path}/")):
+        return path[len(root_path) :]
+    return path
 
 
 @asynccontextmanager
@@ -70,31 +103,98 @@ app = FastAPI(
 )
 
 
+@app.exception_handler(StarletteHTTPException)
+async def public_http_error_handler(request: Request, exc: StarletteHTTPException):
+    route_path = request_route_path(request)
+    if route_path in {"/ui/email-verification", "/ui/verify-email"}:
+        # Multipart parser failures occur before endpoint/form validation.
+        page = "email-verification" if route_path == "/ui/email-verification" else "verify-email"
+        error = {
+            403: "csrf",
+            429: "rate",
+            503: "unavailable",
+        }.get(exc.status_code, "email" if page == "email-verification" else "token")
+        return verification_response(request, page=page, error=error, status_code=exc.status_code)
+    return await http_exception_handler(request, exc)
+
+
 @app.exception_handler(RequestValidationError)
 async def validation_error_handler(request: Request, exc: RequestValidationError):
-    route_path = request.scope["path"]
-    root_path = request.scope.get("root_path", "").rstrip("/")
-    if root_path and (route_path == root_path or route_path.startswith(f"{root_path}/")):
-        route_path = route_path[len(root_path) :]
-    if route_path in {"/auth/register", "/auth/login"}:
-        errors = []
-        for error in exc.errors():
-            safe_error = dict(error)
-            location = error.get("loc", ())
-            # Field errors can echo passwords; structured inputs can contain credentials.
-            if (
-                location
-                and location[0] == "body"
-                and (
-                    "password" in location[1:]
-                    or len(location) == 1
-                    or isinstance(error.get("input"), (dict, list))
-                )
-            ):
-                safe_error.pop("input", None)
-            errors.append(safe_error)
+    route_path = request_route_path(request)
+    if route_path in {"/ui/forgot-password", "/ui/password-reset"}:
+        page = "forgot-password" if route_path.endswith("/forgot-password") else "password-reset"
+        field = str((exc.errors()[0].get("loc") or ("",))[-1])
+        error = "email" if page == "forgot-password" else "password"
+        if field in {"token", "csrf_token"}:
+            error = "token" if field == "token" else "csrf"
+        return recovery_response(request, page=page, error=error, status_code=422)
+    if route_path in {"/ui/email-verification", "/ui/verify-email"}:
+        page = (
+            "email-verification" if route_path.endswith("/email-verification") else "verify-email"
+        )
+        field = str((exc.errors()[0].get("loc") or ("",))[-1])
+        error = "email" if page == "email-verification" else "token"
+        if field == "csrf_token":
+            error = "csrf"
+        return verification_response(request, page=page, error=error, status_code=422)
+    if route_path in {"/auth/register", "/auth/login"} or route_path.startswith(
+        ("/auth/password-reset/", "/auth/email-verification/")
+    ):
+        # Inputs and validator context can contain passwords, addresses, or link secrets.
+        # Preserve only structural diagnostics, including under a mounted root_path.
+        errors = [
+            {
+                "type": error["type"],
+                "loc": error["loc"],
+                "msg": "Invalid request data",
+            }
+            for error in exc.errors()
+        ]
         exc = RequestValidationError(errors)
     return await request_validation_exception_handler(request, exc)
+
+
+def rate_limit_response(request: Request, route_path: str, retry_after: int):
+    if route_path in {"/ui/email-verification", "/ui/verify-email"}:
+        return verification_response(
+            request,
+            page="email-verification"
+            if route_path in VERIFICATION_REQUEST_ROUTES
+            else "verify-email",
+            error="rate",
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            retry_after=retry_after,
+        )
+    if route_path == "/ui/register":
+        response = public_response(
+            request,
+            {
+                "page": "register",
+                "csrfToken": request.state.csrf_token,
+                "email": "",
+                "error": "rate",
+                "ok": None,
+                "mailMode": settings.mail_mode,
+                "verificationRequired": True,
+            },
+            title="Регистрация",
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+        response.headers["Retry-After"] = str(retry_after)
+        return response
+    if route_path.startswith("/ui/"):
+        return recovery_response(
+            request,
+            page="forgot-password" if route_path in RECOVERY_REQUEST_ROUTES else "password-reset",
+            error="rate",
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            retry_after=retry_after,
+        )
+    return JSONResponse(
+        {"detail": "rate"},
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        headers={"Retry-After": str(retry_after)},
+    )
 
 
 @app.middleware("http")
@@ -104,7 +204,49 @@ async def security_middleware(request: Request, call_next):
     if should_set_cookie:
         token = issue_csrf_token(settings.secret_key)
     request.state.csrf_token = token
-    response = await call_next(request)
+    route_path = request_route_path(request)
+    retry_after = None
+    if request.method == "POST":
+        # Count every attempt before form/JSON parsing, including malformed requests.
+        if route_path in RECOVERY_REQUEST_ROUTES | RECOVERY_CONFIRM_ROUTES:
+            limiter = (
+                recovery_request_limiter
+                if route_path in RECOVERY_REQUEST_ROUTES
+                else recovery_confirm_limiter
+            )
+            retry_after = limiter.consume(recovery_client_key(request))
+            request.state.recovery_retry_after = retry_after
+        elif route_path in VERIFICATION_REQUEST_ROUTES | VERIFICATION_CONFIRM_ROUTES or (
+            settings.mail_mode != "disabled" and route_path in REGISTRATION_ROUTES
+        ):
+            limiter = (
+                verification_confirm_limiter
+                if route_path in VERIFICATION_CONFIRM_ROUTES
+                else verification_request_limiter
+            )
+            retry_after = limiter.consume(recovery_client_key(request))
+            request.state.verification_retry_after = retry_after
+    if retry_after is not None:
+        response = rate_limit_response(request, route_path, retry_after)
+    elif (
+        request.method == "POST"
+        and route_path in VERIFICATION_REQUEST_ROUTES
+        and settings.mail_mode == "disabled"
+    ):
+        # Disabled delivery has one uniform response, even for malformed input.
+        if route_path == "/ui/email-verification":
+            response = verification_response(
+                request,
+                page="email-verification",
+                error="unavailable",
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        else:
+            response = JSONResponse(
+                {"detail": "unavailable"}, status_code=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+    else:
+        response = await call_next(request)
     if should_set_cookie:
         response.set_cookie(
             CSRF_COOKIE,
@@ -118,6 +260,9 @@ async def security_middleware(request: Request, call_next):
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault("Referrer-Policy", "same-origin")
+    if route_path.startswith("/auth/") or route_path in PRIVATE_UI_AUTH_ROUTES:
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["Referrer-Policy"] = "no-referrer"
     response.headers.setdefault(
         "Permissions-Policy",
         "camera=(), microphone=(), geolocation=()",

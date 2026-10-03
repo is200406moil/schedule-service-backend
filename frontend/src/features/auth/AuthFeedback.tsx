@@ -26,6 +26,8 @@ export function AuthFeedback({ error, ok, registration }: Props) {
   return (
     <>
       {ok === "registered" ? <div className="form-notice notice-success" role="status">Аккаунт создан. Войдите с той же почтой и паролем.</div> : null}
+      {ok === "password-reset" ? <div className="form-notice notice-success" role="status">Пароль изменён. Войдите с новым паролем.</div> : null}
+      {ok === "email-verified" ? <div className="form-notice notice-success" role="status">Почта подтверждена. Войдите с вашей почтой и паролем.</div> : null}
       {error ? <div ref={errorRef} id="auth-error" className="form-notice notice-error" role="alert" tabIndex={-1}>
         {errorMessage(error, registration)}{error === "exists" ? <> <a href="/ui/login">Войти</a></> : null}
       </div> : null}

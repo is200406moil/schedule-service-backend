@@ -34,6 +34,7 @@ class UserRead(BaseModel):
 
     id: int
     email: str
+    email_verified: bool
     is_active: bool
     first_name: str | None = None
     last_name: str | None = None

@@ -24,7 +24,11 @@ def test_public_auth_pages_boot_the_frontend_without_profile_fields(client: Test
         assert 'id="root"' in page.text
         assert '<script type="module" src="/static/react/' in page.text
         assert page.headers["cache-control"] == "no-store"
-        assert set(public_boot(page)) == {"page", "csrfToken", "email", "error", "ok"}
+        expected = {"page", "csrfToken", "email", "error", "ok"}
+        if public_boot(page)["page"] == "register":
+            expected |= {"mailMode", "verificationRequired"}
+            assert public_boot(page)["verificationRequired"] is False
+        assert set(public_boot(page)) == expected
         assert public_boot(page)["csrfToken"] == client.cookies.get("csrf_token")
         assert "password" not in public_boot(page)
 

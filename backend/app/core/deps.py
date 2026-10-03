@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.csrf import CSRF_HEADER, validate_csrf_token
 from app.core.database import SessionLocal
-from app.core.security import TokenDecodeError, get_token_subject
+from app.core.security import TokenDecodeError, get_token_auth_version, get_token_subject
 from app.models import User
 from app.repositories import user_repository
 
@@ -48,6 +48,7 @@ def _user_from_token(db: Session, token: str) -> User:
     try:
         sub = get_token_subject(token, settings.secret_key)
         user_id = int(sub)
+        auth_version = get_token_auth_version(token, settings.secret_key)
     except (TokenDecodeError, ValueError) as exc:
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,
@@ -55,12 +56,14 @@ def _user_from_token(db: Session, token: str) -> User:
             headers={"WWW-Authenticate": "Bearer"},
         ) from exc
     user = user_repository.get_by_id(db, user_id)
-    if user is None or not user.is_active:
+    if user is None or not user.is_active or user.auth_version != auth_version:
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,
             detail="User not found or inactive",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    if settings.mail_mode != "disabled" and not user.email_verified:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, detail="email-unverified")
     return user
 
 
@@ -84,11 +87,6 @@ def get_current_user_optional(
     if token is None:
         return None
     try:
-        sub = get_token_subject(token, settings.secret_key)
-        user_id = int(sub)
-    except (TokenDecodeError, ValueError):
+        return _user_from_token(db, token)
+    except HTTPException:
         return None
-    user = user_repository.get_by_id(db, user_id)
-    if user is None or not user.is_active:
-        return None
-    return user

@@ -21,6 +21,10 @@ class InvalidCredentialsError(Exception):
     pass
 
 
+class EmailUnverifiedError(Exception):
+    pass
+
+
 class PasswordTooShortError(Exception):
     pass
 
@@ -77,6 +81,8 @@ def authenticate_user(db: Session, email: str, password: str) -> User:
     password_matches = verify_password(password, password_hash)
     if user is None or not password_matches or not user.is_active:
         raise InvalidCredentialsError
+    if settings.mail_mode != "disabled" and not user.email_verified:
+        raise EmailUnverifiedError
     return user
 
 
@@ -85,4 +91,5 @@ def create_access_token_for_user(user: User) -> str:
         subject=str(user.id),
         secret_key=settings.secret_key,
         expires_minutes=settings.access_token_expire_minutes,
+        auth_version=user.auth_version,
     )

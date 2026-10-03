@@ -15,6 +15,7 @@ rtu-mirea-schedule/.git
 rtu-mirea-schedule/.venv
 rtu-mirea-schedule/__pycache__
 .env
+.local
 .coverage
 coverage.xml
 htmlcov

@@ -37,11 +37,13 @@ export function AuthForm({ boot }: { boot: AuthBoot }) {
         <p>{registration ? "Группу и фото можно добавить в профиле." : "Войдите, чтобы открыть расписание и задачи."}</p>
       </div>
       <AuthFeedback error={boot.error} ok={boot.ok} registration={registration} />
+      {registration && boot.mailMode === "local" ? <p className="recovery-mode-notice">Тестовый режим: письмо для подтверждения почты сохраняется в .local/mail, на почту не отправляется.</p> : null}
+      {registration && boot.mailMode === "disabled" ? <p className="recovery-mode-notice">Отправка писем пока недоступна. В этой версии можно войти без подтверждения почты.</p> : null}
       <form method="post" action={`/ui/${id}`} className="auth-form" onSubmit={submit} aria-busy={pending}>
         <input type="hidden" name="csrf_token" value={boot.csrfToken} />
         <AuthEmailField page={boot.page} email={boot.email} error={boot.error} />
         <AuthPasswordField page={boot.page} error={boot.error} inputRef={passwordInput} clientError={passwordError} onInput={() => setPasswordError(null)} />
-        {registration ? <p className="registration-notice">Как сервис хранит и использует данные — в <a href="/ui/privacy">политике конфиденциальности</a>.</p> : null}
+        {registration ? <p className="registration-notice">{boot.verificationRequired ? <>После регистрации подтвердите почту, чтобы войти. </> : null}Как сервис хранит и использует данные — в <a href="/ui/privacy">политике конфиденциальности</a>.</p> : null}
         <button type="submit" className="auth-submit" disabled={pending}>{pending ? (registration ? "Создаём аккаунт…" : "Входим…") : (registration ? "Создать аккаунт" : "Войти")}</button>
       </form>
       <p className="auth-switch">{registration ? <>Уже есть аккаунт? <a href="/ui/login">Войти</a></> : <>Нет аккаунта? <a href="/ui/register">Зарегистрироваться</a></>}</p>

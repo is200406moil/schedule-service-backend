@@ -31,7 +31,7 @@ def test_auth_validation_never_returns_invalid_password_input(
     assert "123456789" not in response.text
     if isinstance(password, str):
         assert password_error["type"] == "string_too_long"
-        assert password_error["ctx"] == {"max_length": 128}
+    assert "ctx" not in password_error
 
 
 def test_registration_validation_never_returns_a_short_password(client: TestClient) -> None:
@@ -48,15 +48,14 @@ def test_registration_validation_never_returns_a_short_password(client: TestClie
             {
                 "type": "string_too_short",
                 "loc": ["body", "password"],
-                "msg": "String should have at least 8 characters",
-                "ctx": {"min_length": 8},
+                "msg": "Invalid request data",
             }
         ]
     }
 
 
 @pytest.mark.parametrize("endpoint", ["/auth/register", "/auth/login"])
-def test_auth_validation_retains_non_password_field_diagnostics(
+def test_auth_validation_retains_field_diagnostics_without_echoing_email(
     client: TestClient, endpoint: str
 ) -> None:
     password = "private-password-marker"
@@ -66,10 +65,11 @@ def test_auth_validation_retains_non_password_field_diagnostics(
     assert password not in response.text
     error = response.json()["detail"][0]
     assert error["loc"] == ["body", "email"]
-    assert error["input"] == "not-an-email"
+    assert "input" not in error
+    assert "not-an-email" not in response.text
     assert error["type"] == "value_error"
     assert error["msg"]
-    assert error["ctx"]["reason"]
+    assert "ctx" not in error
 
 
 @pytest.mark.parametrize("endpoint", ["/auth/register", "/auth/login"])
@@ -85,7 +85,7 @@ def test_missing_email_error_does_not_echo_the_credentials_object(
     assert response.status_code == 422
     assert password not in response.text
     assert response.json() == {
-        "detail": [{"type": "missing", "loc": ["body", "email"], "msg": "Field required"}]
+        "detail": [{"type": "missing", "loc": ["body", "email"], "msg": "Invalid request data"}]
     }
 
 
@@ -131,8 +131,7 @@ def test_auth_password_validation_is_private_under_a_root_path(
             {
                 "type": "string_too_long",
                 "loc": ["body", "password"],
-                "msg": "String should have at most 128 characters",
-                "ctx": {"max_length": 128},
+                "msg": "Invalid request data",
             }
         ]
     }
@@ -151,8 +150,7 @@ def test_auth_validation_keeps_all_errors_without_password_input(
     assert "private-password-marker" not in response.text
     errors = response.json()["detail"]
     assert [error["loc"] for error in errors] == [["body", "email"], ["body", "password"]]
-    assert errors[0]["input"] == "not-an-email"
-    assert "input" not in errors[1]
+    assert all("input" not in error and "ctx" not in error for error in errors)
 
 
 @pytest.mark.parametrize("endpoint", ["/auth/register", "/auth/login"])
@@ -167,8 +165,8 @@ def test_malformed_auth_json_preserves_parser_diagnostics_without_credentials(
     error = response.json()["detail"][0]
     assert error["type"] == "json_invalid"
     assert error["loc"] == ["body", len(body)]
-    assert error["msg"] == "JSON decode error"
-    assert error["ctx"] == {"error": "Expecting ',' delimiter"}
+    assert error["msg"] == "Invalid request data"
+    assert "ctx" not in error
     assert "input" not in error
 
 

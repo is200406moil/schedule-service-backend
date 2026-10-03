@@ -23,6 +23,15 @@ services:
       SCHEDULE_API_DOCS_URL: ${SCHEDULE_API_DOCS_URL:-http://localhost:5000/docs}
       PRIVACY_OPERATOR_NAME: ${PRIVACY_OPERATOR_NAME:-Гиёсидинов Исмоилходжа Иброхимович}
       PRIVACY_CONTACT_EMAIL: ${PRIVACY_CONTACT_EMAIL:-giyesidinov.i.i@edu.mirea.ru}
+      MAIL_MODE: ${MAIL_MODE:-disabled}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8000}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURITY: ${SMTP_SECURITY:-starttls}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_SENDER: ${SMTP_SENDER:-noreply@example.com}
+      SMTP_TIMEOUT_SECONDS: ${SMTP_TIMEOUT_SECONDS:-10}
     ports:
       - "8000:8000"
     healthcheck:
