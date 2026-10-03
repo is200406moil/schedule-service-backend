@@ -1,0 +1,11 @@
+.cookie-notice { width: calc(100% - 48px); max-width: 800px; margin: 0 auto 8px; padding: 16px 20px; display: flex; align-items: center; gap: 24px; border: 1px solid #cbd5df; border-radius: 12px; background: #fff; color: #21313a; }
+.cookie-notice h2 { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
+.cookie-notice p { margin: 0; font-size: 13px; line-height: 1.6; color: #53636a; }
+.cookie-notice a { color: #325ed6; text-underline-offset: 3px; }
+.cookie-notice button { flex-shrink: 0; min-height: 44px; padding: 10px 14px; border: 1px solid #738796; border-radius: 8px; background: #fff; color: #21313a; font: inherit; font-size: 13px; cursor: pointer; }
+.cookie-notice button:hover { background: #eef2fd; border-color: #325ed6; }
+.cookie-notice button:focus-visible { outline: 3px solid #325ed6; outline-offset: 3px; }
+.workspace > .cookie-notice { width: 100%; margin-bottom: 24px; }
+@media (max-width: 600px) {
+  .cookie-notice { width: calc(100% - 32px); flex-direction: column; align-items: stretch; gap: 12px; padding: 16px; }
+}

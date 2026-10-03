@@ -1,0 +1,102 @@
+:root {
+  color-scheme: light;
+  --canvas: #f6f7f9;
+  --paper: #fff;
+  --ink: #21313a;
+  --muted: #53636a;
+  --line: #e1e6ed;
+  --blue: #325ed6;
+  --navy: #172b3c;
+  --gold: #e9b668;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; font-family: "Golos Text Variable", system-ui, sans-serif; font-size: 16px; line-height: 1.5; color: var(--ink); background: var(--canvas); }
+a { color: var(--blue); text-underline-offset: 3px; }
+a:hover { text-decoration-thickness: 2px; }
+button, input { font: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+button { cursor: pointer; }
+button:disabled { cursor: wait; opacity: .7; }
+:focus-visible { outline: 3px solid var(--blue); outline-offset: 4px; }
+.public-page { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+.skip-link { position: fixed; z-index: 10; top: 12px; left: 12px; padding: 12px; background: var(--paper); transform: translateY(-180%); }
+.skip-link:focus { transform: translateY(0); }
+.public-header { width: 100%; max-width: 1280px; margin: 0 auto; padding: 28px 40px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.public-brand { display: inline-flex; align-items: center; gap: 12px; color: var(--navy); text-decoration: none; flex-shrink: 0; }
+.brand-mark { width: 40px; height: 40px; flex-shrink: 0; }
+.brand-wordmark { display: flex; flex-direction: column; font-size: 21px; font-weight: 750; line-height: .98; letter-spacing: -.7px; }
+.brand-period { color: #a16b1e; }
+.public-main { flex: 1; display: grid; place-items: center; width: 100%; padding: 36px 24px 52px; }
+.public-main:focus { outline: none; }
+.auth-card { width: 100%; max-width: 432px; padding: 32px; background: var(--paper); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 8px 28px rgb(23 43 60 / 4%); }
+.auth-heading { margin-bottom: 28px; }
+.auth-heading h1 { margin: 0 0 8px; font-size: 30px; line-height: 1.2; font-weight: 650; letter-spacing: -.8px; }
+.auth-heading p { margin: 0; font-size: 14px; color: var(--muted); }
+.auth-form { display: grid; gap: 20px; }
+.field-group { display: grid; gap: 8px; min-width: 0; }
+.field-group label { font-size: 14px; font-weight: 550; }
+.field-group input { width: 100%; min-width: 0; height: 48px; padding: 0 13px; border: 1px solid #738796; border-radius: 9px; background: var(--paper); color: var(--ink); }
+.field-group input::placeholder { color: #687981; opacity: 1; }
+.field-group input:hover { border-color: #53636a; }
+.field-group input:focus { border-color: var(--blue); outline: 3px solid rgb(50 94 214 / 18%); outline-offset: 1px; }
+.field-group input[aria-invalid="true"] { border-color: #ad373d; }
+.password-field { position: relative; }
+.password-field:has(.password-toggle:not([hidden])) input { padding-right: 100px; }
+.password-toggle { position: absolute; top: 2px; right: 2px; min-height: 44px; padding: 0 12px; border: 0; border-radius: 7px; background: transparent; color: var(--blue); font-size: 13px; font-weight: 500; }
+.password-toggle:hover { background: #eef2fd; }
+.password-toggle:focus-visible { outline-offset: -3px; }
+.field-hint { margin: 0; color: var(--muted); font-size: 13px; }
+.field-error { margin: 0; color: #8f2b34; font-size: 13px; }
+.auth-submit { width: 100%; min-height: 48px; padding: 11px 16px; border: 1px solid var(--blue); border-radius: 9px; background: var(--blue); color: #fff; font-size: 15px; font-weight: 550; }
+.auth-submit:hover:not(:disabled) { background: #254db9; border-color: #254db9; }
+.auth-switch { margin: 24px 0 0; text-align: center; font-size: 14px; color: var(--muted); }
+.auth-switch a { display: inline-flex; align-items: center; min-height: 44px; }
+.form-notice { margin: 0 0 24px; padding: 12px 14px; border-radius: 9px; font-size: 14px; line-height: 1.5; }
+.notice-error { color: #8f2b34; background: #fff1f1; border: 1px solid #f2ced1; }
+.notice-success { color: #245b49; background: #eef8f2; border: 1px solid #cfe6d8; }
+.registration-notice { margin: 0; font-size: 13px; line-height: 1.6; color: var(--muted); }
+.public-footer { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; column-gap: 24px; row-gap: 4px; padding: 12px 24px 24px; color: var(--muted); font-size: 13px; text-align: center; }
+.public-footer a { display: inline-flex; align-items: center; min-height: 44px; }
+.header-link { display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; }
+
+@media (max-width: 480px) {
+  .public-header { padding: 24px; }
+  .public-main { padding: 16px 16px 32px; }
+  .auth-card { padding: 28px 24px; }
+  .auth-heading h1 { font-size: 28px; }
+  .public-footer { flex-direction: column; padding-bottom: max(20px, env(safe-area-inset-bottom)); }
+}
+
+@media (max-height: 600px) {
+  .public-header { padding-top: 20px; padding-bottom: 16px; }
+  .public-main { padding-top: 12px; padding-bottom: 24px; }
+}
+
+
+.privacy-page .public-main { display: block; padding-top: 24px; }
+.privacy-document { max-width: 800px; margin: 0 auto; padding: 44px 48px; background: var(--paper); border: 1px solid var(--line); border-radius: 18px; }
+.privacy-heading { padding-bottom: 24px; border-bottom: 1px solid var(--line); }
+.document-date { margin: 0 0 12px; font-size: 13px; color: var(--muted); }
+.privacy-heading h1 { margin: 0 0 12px; font-size: 32px; font-weight: 650; line-height: 1.2; letter-spacing: -.7px; overflow-wrap: anywhere; }
+.privacy-heading > p:last-child { margin: 0; color: var(--muted); }
+.privacy-draft { margin-top: 24px; padding: 16px 18px; border-radius: 9px; background: #f5f0e6; color: #655131; font-size: 14px; }
+.privacy-draft strong { display: block; margin-bottom: 4px; }
+.privacy-document section { margin-top: 32px; }
+.privacy-document h2 { margin: 0 0 14px; font-size: 20px; line-height: 1.35; font-weight: 600; }
+.privacy-document section p { margin: 12px 0 0; line-height: 1.7; }
+.privacy-document a { overflow-wrap: anywhere; }
+.privacy-document code { font-size: .9em; }
+.privacy-data-list { margin: 0; }
+.privacy-data-list > div { margin: 16px 0; }
+.privacy-data-list dt { margin-bottom: 4px; font-weight: 550; }
+.privacy-data-list dd { margin: 0; line-height: 1.7; }
+.privacy-actions { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 8px 24px; }
+.privacy-actions a { min-height: 44px; display: inline-flex; align-items: center; }
+@media (max-width: 600px) {
+  .privacy-page .public-main { padding-top: 8px; }
+  .privacy-document { padding: 28px 24px; }
+  .privacy-heading h1 { font-size: 26px; }
+  .privacy-document h2 { font-size: 19px; }
+}

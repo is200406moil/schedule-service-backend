@@ -16,9 +16,13 @@ services:
       SECRET_KEY: ${SECRET_KEY:-change-me-in-development}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
-      SCHEDULE_API_BASE_URL: ${SCHEDULE_API_BASE_URL:-http://schedule-api:5000/api/schedule}
+      LOGIN_RATE_LIMIT_ATTEMPTS: ${LOGIN_RATE_LIMIT_ATTEMPTS:-5}
+      LOGIN_RATE_LIMIT_WINDOW_SECONDS: ${LOGIN_RATE_LIMIT_WINDOW_SECONDS:-300}
+      SCHEDULE_API_BASE_URL: ${COMPOSE_SCHEDULE_API_BASE_URL:-http://schedule-api:5000/api/schedule}
       SCHEDULE_API_TIMEOUT_SECONDS: ${SCHEDULE_API_TIMEOUT_SECONDS:-5}
       SCHEDULE_API_DOCS_URL: ${SCHEDULE_API_DOCS_URL:-http://localhost:5000/docs}
+      PRIVACY_OPERATOR_NAME: ${PRIVACY_OPERATOR_NAME:-Гиёсидинов Исмоилходжа Иброхимович}
+      PRIVACY_CONTACT_EMAIL: ${PRIVACY_CONTACT_EMAIL:-giyesidinov.i.i@edu.mirea.ru}
     ports:
       - "8000:8000"
     healthcheck:
@@ -52,7 +56,7 @@ services:
     image: student-tasks-schedule-api:local
     build:
       context: .
-      dockerfile: Dockerfile.schedule
+      dockerfile: infra/schedule/Dockerfile
       args:
         SCHEDULE_COMMIT: 31f057e680579682a09c75ef11e166c30b2bd963
     depends_on:

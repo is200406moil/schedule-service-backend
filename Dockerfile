@@ -13,21 +13,21 @@ FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-WORKDIR /app
+WORKDIR /workspace/backend
 
-COPY requirements.lock ./
+COPY backend/requirements.txt ./
 
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.lock
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip check
 
 RUN addgroup --system app \
     && adduser --system --ingroup app app
 
-COPY alembic ./alembic
-COPY alembic.ini ./alembic.ini
-COPY app ./app
-COPY --from=frontend-build /work/app/static/react ./app/static/react
-COPY prestart.sh ./
+COPY backend/alembic ./alembic
+COPY backend/alembic.ini ./alembic.ini
+COPY backend/app ./app
+COPY --from=frontend-build /work/frontend/dist /workspace/frontend/dist
+COPY backend/prestart.sh ./
 
 RUN sed -i 's/\r$//' ./prestart.sh \
     && chmod +x ./prestart.sh

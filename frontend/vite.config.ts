@@ -5,18 +5,17 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   base: "/static/react/",
+  input: {
+    overview: resolve(import.meta.dirname, "src/entries/overview-main.tsx"),
+    calendar: resolve(import.meta.dirname, "src/entries/calendar-main.tsx"),
+    tasks: resolve(import.meta.dirname, "src/entries/tasks-main.tsx"),
+    taskEditor: resolve(import.meta.dirname, "src/entries/task-editor-main.tsx"),
+    profile: resolve(import.meta.dirname, "src/entries/profile-main.tsx"),
+    auth: resolve(import.meta.dirname, "src/entries/auth-main.tsx"),
+  },
   build: {
-    outDir: "../app/static/react",
+    outDir: "dist",
     emptyOutDir: true,
     manifest: true,
-    rollupOptions: {
-      input: {
-        overview: resolve(import.meta.dirname, "src/main.tsx"),
-        calendar: resolve(import.meta.dirname, "src/calendar-main.tsx"),
-        tasks: resolve(import.meta.dirname, "src/tasks-main.tsx"),
-        taskEditor: resolve(import.meta.dirname, "src/task-editor-main.tsx"),
-        profile: resolve(import.meta.dirname, "src/profile-main.tsx"),
-      },
-    },
   },
 });

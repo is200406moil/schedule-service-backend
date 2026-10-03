@@ -15,7 +15,7 @@ dist/
 build/
 rtu-mirea-schedule/
 frontend/node_modules/
-app/static/react/
+frontend/dist/
 
 # Local editor and AI-assistant settings
 .cursor/
