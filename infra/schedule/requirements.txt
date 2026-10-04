@@ -1,5 +1,5 @@
-# Runtime of the external schedule parser at commit
-# 31f057e680579682a09c75ef11e166c30b2bd963, captured from its working image.
+# Pinned runtime for the external schedule parser at source commit
+# 31f057e680579682a09c75ef11e166c30b2bd963, maintained here for security updates.
 # This is a separate service, not another requirements set for backend/.
 annotated-doc==0.0.5
 annotated-types==0.8.0
@@ -22,7 +22,7 @@ starlette==1.6.0
 typing-inspection==0.4.4
 typing-extensions==4.16.0
 tzdata==2026.3
-urllib3==2.7.0
+urllib3==2.8.0
 uvicorn==0.52.4
 uvloop==0.22.1 ; sys_platform != "win32" and sys_platform != "cygwin" and platform_python_implementation != "PyPy"
 watchfiles==1.2.0
