@@ -8,7 +8,7 @@ import "../shared/responsive.css";
 import "../features/profile/profile.css";
 
 const root = document.getElementById("root");
-const data = document.getElementById("preview-data");
+const data = document.getElementById("page-data");
 if (root && data?.textContent) {
   createRoot(root).render(<ProfileApp boot={JSON.parse(data.textContent) as ProfileBootData} />);
 }

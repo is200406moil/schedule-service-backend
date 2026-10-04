@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowUpRight } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { ApiError, createTask, getTasks, UnauthorizedError, updateProfile } from "../../shared/api";
 import { formatDate } from "../../shared/dates";
 import { ProfileDetailsForm } from "./ProfileDetailsForm";
@@ -10,6 +10,7 @@ import { profilePayload, readAvatarFile } from "./profileModel";
 import type { ProfileFields } from "./profileModel";
 import { SessionEnded } from "../../shared/SessionEnded";
 import { Shell } from "../../shared/Shell";
+import { uiRoutes } from "../../shared/uiRoutes";
 import { TaskCreateDialog } from "../tasks/TaskCreateDialog";
 import type { Loadable, NewTask, ProfileBootData, Task } from "../../shared/types";
 
@@ -112,19 +113,19 @@ export function ProfileApp({ boot }: { boot: ProfileBootData }) {
     focusHeadingAfterEdit.current = true;
     setEditing(false);
     setAvatarError("");
-    window.history.replaceState({}, "", "/ui/profile/preview");
+    window.history.replaceState({}, "", uiRoutes.profile);
   }
 
   return (
     <Shell user={shellUser} section="profile" onCreateTask={() => setCreateOpen(true)}>
       <div className="workspace-inner profile-view">
-        <div className="page-topline"><span>{formatDate(boot.today, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span><a className="old-version-link" href="/ui/profile">Прежний профиль <ArrowUpRight size={15} aria-hidden="true" /></a></div>
+        <div className="page-topline"><span>{formatDate(boot.today, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span></div>
         <header className="profile-page-head">
           <h1 ref={pageHeading} tabIndex={-1}>{editing ? "Редактирование профиля" : "Профиль"}</h1>
         </header>
         {editing ? (
           <>
-            <a className="profile-back" href="/ui/profile/preview"><ArrowLeft size={17} aria-hidden="true" /> К профилю</a>
+            <a className="profile-back" href={uiRoutes.profile}><ArrowLeft size={17} aria-hidden="true" /> К профилю</a>
             <div className="profile-editor-card">
               <ProfilePhotoEditor profile={profile} busy={pending !== null} saving={pending === "avatar"} error={avatarError} onSave={saveAvatar} />
               <ProfileDetailsForm profile={profile} busy={pending !== null} saving={pending === "details"} onSave={saveDetails} onCancel={closeEditor} onSaved={closeEditor} />

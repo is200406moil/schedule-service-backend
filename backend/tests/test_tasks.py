@@ -45,7 +45,7 @@ def test_user_cannot_read_another_users_task(client: TestClient) -> None:
     assert response.status_code == 404
 
 
-def test_web_task_filters_separate_active_and_completed_tasks(
+def test_web_task_filters_boot_the_selected_react_filter(
     client: TestClient,
 ) -> None:
     headers = register_and_login(client, "task-filters@example.com")
@@ -64,18 +64,16 @@ def test_web_task_filters_separate_active_and_completed_tasks(
         json={"title": "Готовый отчёт", "status": "done"},
     )
 
-    active_response = client.get("/ui/tasks?filter=active", headers=headers)
-    done_response = client.get("/ui/tasks?filter=done", headers=headers)
-    overdue_response = client.get("/ui/tasks?filter=overdue", headers=headers)
+    for task_filter in ("all", "active", "today", "done", "overdue"):
+        response = client.get(f"/ui/tasks?filter={task_filter}", headers=headers)
 
-    assert active_response.status_code == 200
-    assert "Активная лабораторная" in active_response.text
-    assert "Готовый отчёт" not in active_response.text
-    assert done_response.status_code == 200
-    assert "Готовый отчёт" in done_response.text
-    assert "Активная лабораторная" not in done_response.text
-    assert overdue_response.status_code == 200
-    assert "Активная лабораторная" in overdue_response.text
+        assert response.status_code == 200
+        assert response.context["page_data"]["initialFilter"] == task_filter
+        assert 'id="page-data" type="application/json"' in response.text
+        assert "Активная лабораторная" not in response.text
+        assert "Готовый отчёт" not in response.text
+    tasks = client.get("/tasks", headers=headers).json()
+    assert {task["status"] for task in tasks} == {"todo", "done"}
 
 
 def test_cookie_authenticated_api_mutation_requires_csrf_header(

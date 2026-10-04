@@ -1,6 +1,6 @@
-import { BookOpenText, MapPin, Plus, RefreshCw } from "lucide-react";
+import { BookOpenText, Clock3, MapPin, Plus, RefreshCw } from "lucide-react";
 import { lessonWord, lessonsForDate } from "../../shared/dates";
-import { keyedLessons } from "../../shared/lessonIdentity";
+import { buildLessonTimeline } from "../../shared/lessonTimeline";
 import type { Lesson, Loadable, Schedule } from "../../shared/types";
 
 type Props = {
@@ -21,7 +21,7 @@ export function CalendarDayLessons({ date, group, schedule, highlightLesson, onR
         <span>{schedule.kind === "ready" ? `${lessons.length} ${lessonWord(lessons.length)}` : ""}</span>
       </div>
       {!group ? (
-        <div className="calendar-inline-empty"><BookOpenText size={22} aria-hidden="true" /><p>Укажите группу в профиле, чтобы увидеть расписание.</p><a href="/ui/profile/preview">Указать группу</a></div>
+        <div className="calendar-inline-empty"><BookOpenText size={22} aria-hidden="true" /><p>Укажите группу в профиле, чтобы увидеть расписание.</p><a href="/ui/profile">Указать группу</a></div>
       ) : schedule.kind === "loading" ? (
         <div className="calendar-skeleton" role="status" aria-label="Загружаем расписание"><span /><span /></div>
       ) : schedule.kind === "error" ? (
@@ -30,7 +30,16 @@ export function CalendarDayLessons({ date, group, schedule, highlightLesson, onR
         <div className="calendar-inline-empty"><BookOpenText size={22} aria-hidden="true" /><p>Пар на этот день нет.</p></div>
       ) : (
         <ol className="calendar-lesson-list">
-          {keyedLessons(lessons).map(({ lesson, key }) => {
+          {buildLessonTimeline(lessons).map((entry) => {
+            if (entry.kind === "break") {
+              return (
+                <li className="calendar-break" key={entry.key}>
+                  <span><Clock3 size={14} aria-hidden="true" />Перерыв</span>
+                  <strong>{entry.label}</strong>
+                </li>
+              );
+            }
+            const { lesson, key } = entry;
             const start = lesson.time_start.slice(0, 5);
             return (
               <li className={`calendar-lesson${highlightLesson === start ? " is-highlighted" : ""}`} key={key}>

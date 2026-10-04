@@ -2,6 +2,7 @@ import json
 import re
 from datetime import UTC, datetime, timedelta, timezone
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.core.time import datetime_local_value, normalize_due_at
@@ -41,7 +42,7 @@ def test_task_api_keeps_utc_deadline_when_sqlite_returns_naive_datetime(
     assert listed.json()[0]["due_at"] == "2026-09-03T15:30:00Z"
 
 
-def test_calendar_uses_internal_schedule_proxy(client: TestClient) -> None:
+def test_calendar_boots_react_without_inlining_a_legacy_task_snapshot(client: TestClient) -> None:
     headers = register_and_login(client, "calendar@example.com")
     client.post(
         "/tasks",
@@ -56,14 +57,14 @@ def test_calendar_uses_internal_schedule_proxy(client: TestClient) -> None:
     response = client.get("/ui/calendar", headers=headers)
 
     assert response.status_code == 200
-    assert '"scheduleApi": "/schedule"' in response.text
-    assert '"title": "Calendar task"' in response.text
-    assert '"due_at": "2026-09-03T18:30"' in response.text
-    assert '<script src="/static/calendar.js?v=1" defer></script>' in response.text
+    assert 'id="page-data" type="application/json"' in response.text
+    assert '"title": "Calendar task"' not in response.text
+    assert 'src="/static/react/assets/calendar-test.js"' in response.text
     assert "localhost:5000/api/schedule" not in response.text
+    assert client.get("/tasks", headers=headers).json()[0]["title"] == "Calendar task"
 
 
-def test_profile_shows_progress_and_only_upcoming_active_tasks(
+def test_profile_boots_react_without_inlining_a_legacy_task_snapshot(
     client: TestClient,
 ) -> None:
     headers = register_and_login(client, "profile@example.com")
@@ -81,10 +82,10 @@ def test_profile_shows_progress_and_only_upcoming_active_tasks(
     response = client.get("/ui/profile", headers=headers)
 
     assert response.status_code == 200
-    assert "Задачи семестра" in response.text
-    assert "Upcoming profile task" in response.text
+    assert 'id="page-data" type="application/json"' in response.text
+    assert "Upcoming profile task" not in response.text
     assert "Completed profile task" not in response.text
-    assert '<script src="/static/profile.js?v=1" defer></script>' in response.text
+    assert 'src="/static/react/assets/profile-test.js"' in response.text
 
 
 def test_profile_details_can_be_cleared_without_avatar_form_overwriting_them(
@@ -210,29 +211,38 @@ def test_task_forms_reject_invalid_values_without_losing_input(
 def test_task_return_destination_uses_an_exact_allowlist() -> None:
     allowed = {
         "/ui": "/ui",
+        "/ui/preview": "/ui",
         "/ui/calendar": "/ui/calendar",
-        "/ui/calendar/preview": "/ui/calendar/preview",
+        "/ui/calendar/preview": "/ui/calendar",
         "/ui/profile": "/ui/profile",
+        "/ui/profile/preview": "/ui/profile",
         "/ui/tasks": "/ui/tasks",
+        "/ui/tasks?filter=all": "/ui/tasks?filter=all",
         "/ui/tasks?filter=overdue": "/ui/tasks?filter=overdue",
-        "/ui/tasks/preview": "/ui/tasks/preview",
-        "/ui/tasks/preview?filter=active": "/ui/tasks/preview?filter=active",
-        "/ui/tasks/preview?filter=today": "/ui/tasks/preview?filter=today",
-        "/ui/tasks/preview?filter=overdue": "/ui/tasks/preview?filter=overdue",
-        "/ui/tasks/preview?filter=done": "/ui/tasks/preview?filter=done",
+        "/ui/tasks/preview": "/ui/tasks",
+        "/ui/tasks/preview?filter=all": "/ui/tasks?filter=all",
+        "/ui/tasks/preview?filter=active": "/ui/tasks?filter=active",
+        "/ui/tasks/preview?filter=today": "/ui/tasks?filter=today",
+        "/ui/tasks/preview?filter=overdue": "/ui/tasks?filter=overdue",
+        "/ui/tasks/preview?filter=done": "/ui/tasks?filter=done",
     }
 
     for value, expected in allowed.items():
         assert safe_ui_return(value) == expected
 
     assert safe_ui_return("/ui/calendar?date=2026-09-03") == "/ui/calendar?date=2026-09-03"
-    assert (
-        safe_ui_return("/ui/calendar/preview?date=2026-09-03")
-        == "/ui/calendar/preview?date=2026-09-03"
-    )
+    assert safe_ui_return("/ui/calendar/preview?date=2026-09-03") == "/ui/calendar?date=2026-09-03"
     assert (
         safe_ui_return("/ui/calendar?date=2026-09-03&lesson=09:00")
         == "/ui/calendar?date=2026-09-03&lesson=09:00"
+    )
+    assert (
+        safe_ui_return("/ui/calendar/preview?date=2026-09-03&lesson=09:00")
+        == "/ui/calendar?date=2026-09-03&lesson=09:00"
+    )
+    assert (
+        safe_ui_return("/ui/calendar/preview?date=2026-09-03&lesson=09%3A00")
+        == "/ui/calendar?date=2026-09-03&lesson=09%3A00"
     )
 
     for unsafe in (
@@ -240,7 +250,7 @@ def test_task_return_destination_uses_an_exact_allowlist() -> None:
         "//example.com/ui/tasks",
         "/ui\\example.com",
         "/ui/tasks?filter=done&next=https://example.com",
-        "/ui/tasks/preview?filter=all",
+        "/ui/tasks/preview?filter=unknown",
         "/ui/tasks/preview?filter=active&next=https://example.com",
         "/ui/tasks/preview?filter=active&filter=done",
         "/ui/tasks/preview/extra",
@@ -248,14 +258,19 @@ def test_task_return_destination_uses_an_exact_allowlist() -> None:
         "/ui/calendar?date=not-validated",
         "/ui/calendar?date=2026-02-30",
         "/ui/calendar?date=2026-09-03&lesson=25:00",
+        "/ui/calendar?date=2026-09-03&lesson=25%3A00",
         "/ui/calendar?date=2026-09-03&next=https://example.com",
         "/ui/calendar/preview?date=2026-02-30",
         "/ui/calendar/preview?date=2026-09-03&next=https://example.com",
+        "/ui/calendar/preview?date=2026-09-03&lesson=09:00&lesson=10:00",
+        "/ui/calendar/preview?date=2026-09-03&lesson=09:00#outside",
+        "/ui/preview?next=https://example.com",
     ):
         assert safe_ui_return(unsafe) == "/ui/tasks"
 
 
-def test_calendar_task_returns_to_selected_day(client: TestClient) -> None:
+@pytest.mark.parametrize("calendar_path", ["/ui/calendar", "/ui/calendar/preview"])
+def test_calendar_task_returns_to_selected_day(client: TestClient, calendar_path: str) -> None:
     headers = register_and_login(client, "calendar-return@example.com")
     client.get("/ui/calendar", headers=headers)
     csrf_token = client.cookies.get("csrf_token")
@@ -265,7 +280,7 @@ def test_calendar_task_returns_to_selected_day(client: TestClient) -> None:
         headers=headers,
         data={
             "title": "Задача для пары",
-            "return_to": "/ui/calendar?date=2026-09-03&lesson=09:00",
+            "return_to": f"{calendar_path}?date=2026-09-03&lesson=09:00",
             "csrf_token": csrf_token,
         },
         follow_redirects=False,
@@ -275,58 +290,62 @@ def test_calendar_task_returns_to_selected_day(client: TestClient) -> None:
     assert response.headers["location"] == "/ui/calendar?date=2026-09-03&lesson=09:00"
 
 
-def test_react_preview_uses_same_origin_built_assets(
+def test_react_overview_uses_same_origin_built_assets(
     client: TestClient,
     monkeypatch,
 ) -> None:
     headers = register_and_login(client, "react-preview@example.com")
     monkeypatch.setattr(
-        "app.routers.ui.dashboard.preview_assets",
+        "app.routers.ui.dashboard.react_assets",
         lambda: {
-            "preview_script": "/static/react/assets/main-test.js",
-            "preview_styles": ["/static/react/assets/main-test.css"],
+            "react_script": "/static/react/assets/main-test.js",
+            "react_styles": ["/static/react/assets/main-test.css"],
         },
     )
 
-    response = client.get("/ui/preview", headers=headers)
+    response = client.get("/ui", headers=headers)
 
     assert response.status_code == 200
-    assert '<script id="preview-data" type="application/json">' in response.text
+    assert '<script id="page-data" type="application/json">' in response.text
     assert 'src="/static/react/assets/main-test.js"' in response.text
     assert 'href="/static/react/assets/main-test.css"' in response.text
     assert "'unsafe-inline'" not in response.headers["Content-Security-Policy"]
 
 
-def test_react_tasks_preview_redirects_unauthenticated_user(client: TestClient) -> None:
-    response = client.get("/ui/tasks/preview", follow_redirects=False)
+@pytest.mark.parametrize(
+    "path",
+    ["/ui", "/ui/calendar", "/ui/tasks", "/ui/tasks/new", "/ui/tasks/123/edit", "/ui/profile"],
+)
+def test_canonical_react_pages_redirect_unauthenticated_user(client: TestClient, path: str) -> None:
+    response = client.get(path, follow_redirects=False)
 
     assert response.status_code == 303
     assert response.headers["location"] == "/ui/login"
 
 
-def test_react_tasks_preview_boots_selected_filter_and_same_origin_assets(
+def test_react_tasks_boots_selected_filter_and_same_origin_assets(
     client: TestClient,
     monkeypatch,
 ) -> None:
     headers = register_and_login(client, "react-tasks@example.com")
     requested_entries: list[str] = []
 
-    def fake_preview_assets(entry: str) -> dict[str, object]:
+    def fake_react_assets(entry: str) -> dict[str, object]:
         requested_entries.append(entry)
         return {
-            "preview_script": "/static/react/assets/tasks-test.js",
-            "preview_styles": ["/static/react/assets/tasks-test.css"],
+            "react_script": "/static/react/assets/tasks-test.js",
+            "react_styles": ["/static/react/assets/tasks-test.css"],
         }
 
-    monkeypatch.setattr("app.routers.ui.tasks.preview_assets", fake_preview_assets)
+    monkeypatch.setattr("app.routers.ui.tasks.react_assets", fake_react_assets)
 
-    response = client.get("/ui/tasks/preview?filter=today", headers=headers)
+    response = client.get("/ui/tasks?filter=today", headers=headers)
 
     assert response.status_code == 200
     assert requested_entries == ["src/entries/tasks-main.tsx"]
     assert "Задачи · Мой семестр" in response.text
     boot_match = re.search(
-        r'<script id="preview-data" type="application/json">(.*?)</script>',
+        r'<script id="page-data" type="application/json">(.*?)</script>',
         response.text,
     )
     assert boot_match is not None
@@ -338,15 +357,7 @@ def test_react_tasks_preview_boots_selected_filter_and_same_origin_assets(
     assert "'unsafe-inline'" not in response.headers["Content-Security-Policy"]
 
 
-def test_react_task_editor_previews_redirect_unauthenticated_user(client: TestClient) -> None:
-    for path in ("/ui/tasks/new/preview", "/ui/tasks/123/edit/preview"):
-        response = client.get(path, follow_redirects=False)
-
-        assert response.status_code == 303
-        assert response.headers["location"] == "/ui/login"
-
-
-def test_react_new_task_editor_preview_boots_subject_and_safe_return(
+def test_react_new_task_editor_boots_subject_and_safe_canonical_return(
     client: TestClient,
     monkeypatch,
 ) -> None:
@@ -359,17 +370,17 @@ def test_react_new_task_editor_preview_boots_subject_and_safe_return(
     assert updated.status_code == 200
     requested_entries: list[str] = []
 
-    def fake_preview_assets(entry: str) -> dict[str, object]:
+    def fake_react_assets(entry: str) -> dict[str, object]:
         requested_entries.append(entry)
         return {
-            "preview_script": "/static/react/assets/task-editor-test.js",
-            "preview_styles": ["/static/react/assets/task-editor-test.css"],
+            "react_script": "/static/react/assets/task-editor-test.js",
+            "react_styles": ["/static/react/assets/task-editor-test.css"],
         }
 
-    monkeypatch.setattr("app.routers.ui.tasks.preview_assets", fake_preview_assets)
+    monkeypatch.setattr("app.routers.ui.tasks.react_assets", fake_react_assets)
     subject = "<script>alert('x')</script>" + "М" * 300
     response = client.get(
-        "/ui/tasks/new/preview",
+        "/ui/tasks/new",
         headers=headers,
         params={
             "return_to": "/ui/calendar/preview?date=2026-09-03",
@@ -381,7 +392,7 @@ def test_react_new_task_editor_preview_boots_subject_and_safe_return(
     assert requested_entries == ["src/entries/task-editor-main.tsx"]
     assert "Новая задача · Мой семестр" in response.text
     boot_match = re.search(
-        r'<script id="preview-data" type="application/json">(.*?)</script>',
+        r'<script id="page-data" type="application/json">(.*?)</script>',
         response.text,
     )
     assert boot_match is not None
@@ -393,7 +404,7 @@ def test_react_new_task_editor_preview_boots_subject_and_safe_return(
         "today": moscow_today().isoformat(),
         "csrfToken": client.cookies.get("csrf_token"),
         "taskId": None,
-        "returnTo": "/ui/calendar/preview?date=2026-09-03",
+        "returnTo": "/ui/calendar?date=2026-09-03",
         "initialSubject": subject[:255],
     }
     assert "<script>alert" not in response.text
@@ -401,7 +412,7 @@ def test_react_new_task_editor_preview_boots_subject_and_safe_return(
     assert 'href="/static/react/assets/task-editor-test.css"' in response.text
 
 
-def test_react_edit_task_editor_preview_exposes_only_task_id(
+def test_react_edit_task_editor_exposes_only_task_id_and_api_checks_ownership(
     client: TestClient,
     monkeypatch,
 ) -> None:
@@ -415,15 +426,15 @@ def test_react_edit_task_editor_preview_exposes_only_task_id(
     task_id = created.json()["id"]
     other_headers = register_and_login(client, "react-task-editor-other@example.com")
     monkeypatch.setattr(
-        "app.routers.ui.tasks.preview_assets",
+        "app.routers.ui.tasks.react_assets",
         lambda entry: {
-            "preview_script": "/static/react/assets/task-editor-test.js",
-            "preview_styles": [],
+            "react_script": "/static/react/assets/task-editor-test.js",
+            "react_styles": [],
         },
     )
 
     response = client.get(
-        f"/ui/tasks/{task_id}/edit/preview",
+        f"/ui/tasks/{task_id}/edit",
         headers=other_headers,
         params={"return_to": "https://outside.example", "subject": "Free text"},
     )
@@ -431,32 +442,33 @@ def test_react_edit_task_editor_preview_exposes_only_task_id(
     assert response.status_code == 200
     assert "Редактировать задачу · Мой семестр" in response.text
     boot_match = re.search(
-        r'<script id="preview-data" type="application/json">(.*?)</script>',
+        r'<script id="page-data" type="application/json">(.*?)</script>',
         response.text,
     )
     assert boot_match is not None
     boot_data = json.loads(boot_match.group(1))
     assert boot_data["taskId"] == task_id
-    assert boot_data["returnTo"] == "/ui/tasks/preview"
+    assert boot_data["returnTo"] == "/ui/tasks"
     assert boot_data["initialSubject"] == "Free text"
     assert "Owner secret task" not in response.text
     assert "Private task body" not in response.text
+    assert client.get(f"/tasks/{task_id}", headers=other_headers).status_code == 404
 
 
-def test_react_calendar_preview_keeps_date_and_same_origin_assets(
+def test_react_calendar_keeps_date_and_same_origin_assets(
     client: TestClient,
     monkeypatch,
 ) -> None:
     headers = register_and_login(client, "react-calendar@example.com")
     monkeypatch.setattr(
-        "app.routers.ui.calendar.preview_assets",
+        "app.routers.ui.calendar.react_assets",
         lambda entry: {
-            "preview_script": "/static/react/assets/calendar-test.js",
-            "preview_styles": ["/static/react/assets/calendar-test.css"],
+            "react_script": "/static/react/assets/calendar-test.js",
+            "react_styles": ["/static/react/assets/calendar-test.css"],
         },
     )
 
-    response = client.get("/ui/calendar/preview?date=2026-09-03&lesson=09:00", headers=headers)
+    response = client.get("/ui/calendar?date=2026-09-03&lesson=09:00", headers=headers)
 
     assert response.status_code == 200
     assert "Календарь · Мой семестр" in response.text
@@ -466,51 +478,66 @@ def test_react_calendar_preview_keeps_date_and_same_origin_assets(
     assert "'unsafe-inline'" not in response.headers["Content-Security-Policy"]
 
 
-def test_web_pages_load_external_page_assets(client: TestClient) -> None:
+def test_canonical_web_pages_only_load_their_react_assets(client: TestClient) -> None:
     headers = register_and_login(client, "external-assets@example.com")
-
-    dashboard = client.get("/ui", headers=headers)
-    calendar = client.get("/ui/calendar", headers=headers)
-    tasks = client.get("/ui/tasks", headers=headers)
-    task_form = client.get("/ui/tasks/new", headers=headers)
-    profile = client.get("/ui/profile", headers=headers)
-
     pages = {
-        "dashboard": dashboard,
-        "calendar": calendar,
-        "tasks": tasks,
-        "task_form": task_form,
-        "profile": profile,
+        "/ui": "overview",
+        "/ui/calendar": "calendar",
+        "/ui/tasks": "tasks",
+        "/ui/tasks/new": "task-editor",
+        "/ui/tasks/123/edit": "task-editor",
+        "/ui/profile": "profile",
     }
-    for response in pages.values():
+    for path, page in pages.items():
+        response = client.get(path, headers=headers)
         assert response.status_code == 200
-        assert 'href="/static/css/base.css?v=3"' in response.text
-        assert 'href="/static/css/app.css?v=2"' in response.text
+        assert 'id="page-data" type="application/json"' in response.text
+        assert f'src="/static/react/assets/{page}-test.js"' in response.text
+        assert f'href="/static/react/assets/{page}-test.css"' in response.text
+        assert "/static/css/" not in response.text
+        assert "onsubmit=" not in response.text
+        assert "'unsafe-inline'" not in response.headers["Content-Security-Policy"]
+        for legacy_script in ("dashboard", "calendar", "tasks", "task_form", "profile"):
+            assert f"/static/{legacy_script}.js" not in response.text
 
-    page_styles = {
-        "dashboard": "dashboard",
-        "calendar": "calendar",
-        "tasks": "tasks",
-        "task_form": "tasks",
-        "profile": "profile",
-    }
-    for page_name, response in pages.items():
-        expected = page_styles[page_name]
-        if expected:
-            version = 2 if expected in {"tasks", "profile"} else 1
-            assert f'href="/static/css/{expected}.css?v={version}"' in response.text
-        for stylesheet in {"dashboard", "calendar", "tasks", "profile", "auth"} - {expected}:
-            assert f"/static/css/{stylesheet}.css" not in response.text
 
-    assert 'id="dashboard-data" type="application/json"' in dashboard.text
-    assert '<script src="/static/dashboard.js?v=1" defer></script>' in dashboard.text
-    assert 'id="calendar-data" type="application/json"' in calendar.text
-    assert '<script src="/static/calendar.js?v=1" defer></script>' in calendar.text
-    assert '<script src="/static/tasks.js?v=2" defer></script>' in tasks.text
-    assert "onsubmit=" not in tasks.text
-    assert task_form.text.count('class="required-label"') == 1
-    assert 'id="task-form-data" type="application/json"' in task_form.text
-    assert '<script src="/static/autocomplete.js?v=1" defer></script>' in task_form.text
-    assert '<script src="/static/task_form.js?v=1" defer></script>' in task_form.text
-    assert '<script src="/static/autocomplete.js?v=1" defer></script>' in profile.text
-    assert '<script src="/static/profile.js?v=1" defer></script>' in profile.text
+@pytest.mark.parametrize(
+    ("preview_path", "canonical_path", "query"),
+    [
+        ("/ui/preview", "/ui", "welcome=1"),
+        ("/ui/calendar/preview", "/ui/calendar", "date=2026-09-03&lesson=09%3A00"),
+        ("/ui/tasks/preview", "/ui/tasks", "filter=done"),
+        (
+            "/ui/tasks/new/preview",
+            "/ui/tasks/new",
+            "subject=%D0%9C%D0%B0%D1%82%D0%B5%D0%BC%D0%B0%D1%82%D0%B8%D0%BA%D0%B0"
+            "&return_to=%2Fui%2Fcalendar%3Fdate%3D2026-09-03%26lesson%3D09%3A00",
+        ),
+        (
+            "/ui/tasks/123/edit/preview",
+            "/ui/tasks/123/edit",
+            "return_to=%2Fui%2Ftasks%3Ffilter%3Dactive",
+        ),
+        ("/ui/profile/preview", "/ui/profile", "edit=1"),
+    ],
+)
+def test_preview_aliases_preserve_query_strings_and_do_not_render_pages(
+    client: TestClient,
+    preview_path: str,
+    canonical_path: str,
+    query: str,
+    monkeypatch,
+) -> None:
+    def unexpected_assets(*args, **kwargs):
+        raise AssertionError("A preview alias must not render a page")
+
+    for module in ("dashboard", "calendar", "tasks", "profile"):
+        monkeypatch.setattr(f"app.routers.ui.{module}.react_assets", unexpected_assets)
+
+    for suffix in ("", f"?{query}"):
+        response = client.get(f"{preview_path}{suffix}", follow_redirects=False)
+
+        assert response.status_code == 308
+        assert response.headers["location"] == f"{canonical_path}{suffix}"
+        assert 'id="page-data"' not in response.text
+    assert preview_path not in client.get("/openapi.json").json()["paths"]

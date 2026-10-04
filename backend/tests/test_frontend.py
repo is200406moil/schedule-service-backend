@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from app.web import frontend
 
 
-def test_preview_assets_resolve_local_vite_manifest(monkeypatch, tmp_path) -> None:
+def test_react_assets_resolve_local_vite_manifest(monkeypatch, tmp_path) -> None:
     manifest = tmp_path / "manifest.json"
     manifest.write_text(
         json.dumps(
@@ -50,51 +50,51 @@ def test_preview_assets_resolve_local_vite_manifest(monkeypatch, tmp_path) -> No
     )
     monkeypatch.setattr(frontend, "MANIFEST", manifest)
 
-    assert frontend.preview_assets() == {
-        "preview_script": "/static/react/assets/main-test.js",
-        "preview_styles": ["/static/react/assets/shared-test.css"],
+    assert frontend.react_assets() == {
+        "react_script": "/static/react/assets/main-test.js",
+        "react_styles": ["/static/react/assets/shared-test.css"],
     }
-    assert frontend.preview_assets("src/entries/calendar-main.tsx") == {
-        "preview_script": "/static/react/assets/calendar-test.js",
-        "preview_styles": [
+    assert frontend.react_assets("src/entries/calendar-main.tsx") == {
+        "react_script": "/static/react/assets/calendar-test.js",
+        "react_styles": [
             "/static/react/assets/shared-test.css",
             "/static/react/assets/calendar-test.css",
         ],
     }
-    assert frontend.preview_assets("src/entries/tasks-main.tsx") == {
-        "preview_script": "/static/react/assets/tasks-test.js",
-        "preview_styles": [
+    assert frontend.react_assets("src/entries/tasks-main.tsx") == {
+        "react_script": "/static/react/assets/tasks-test.js",
+        "react_styles": [
             "/static/react/assets/shared-test.css",
             "/static/react/assets/tasks-test.css",
         ],
     }
-    assert frontend.preview_assets("src/entries/task-editor-main.tsx") == {
-        "preview_script": "/static/react/assets/task-editor-test.js",
-        "preview_styles": [
+    assert frontend.react_assets("src/entries/task-editor-main.tsx") == {
+        "react_script": "/static/react/assets/task-editor-test.js",
+        "react_styles": [
             "/static/react/assets/shared-test.css",
             "/static/react/assets/task-editor-test.css",
         ],
     }
-    assert frontend.preview_assets("src/entries/profile-main.tsx") == {
-        "preview_script": "/static/react/assets/profile-test.js",
-        "preview_styles": [
+    assert frontend.react_assets("src/entries/profile-main.tsx") == {
+        "react_script": "/static/react/assets/profile-test.js",
+        "react_styles": [
             "/static/react/assets/shared-test.css",
             "/static/react/assets/profile-test.css",
         ],
     }
-    assert frontend.preview_assets("src/entries/auth-main.tsx") == {
-        "preview_script": "/static/react/assets/auth-test.js",
-        "preview_styles": [
+    assert frontend.react_assets("src/entries/auth-main.tsx") == {
+        "react_script": "/static/react/assets/auth-test.js",
+        "react_styles": [
             "/static/react/assets/shared-test.css",
             "/static/react/assets/auth-test.css",
         ],
     }
 
 
-def test_preview_assets_explain_missing_build(monkeypatch, tmp_path) -> None:
+def test_react_assets_explain_missing_build(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr(frontend, "MANIFEST", tmp_path / "missing.json")
 
     with pytest.raises(HTTPException) as error:
-        frontend.preview_assets()
+        frontend.react_assets()
 
     assert error.value.status_code == 503

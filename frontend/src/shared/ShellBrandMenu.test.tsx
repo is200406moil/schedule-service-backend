@@ -22,7 +22,7 @@ describe("shared brand", () => {
   it("links to the overview and gives the decorative SVG no duplicate accessible name", () => {
     const html = renderToStaticMarkup(<Brand className="header-brand" />);
     expect(html).toContain('class="brand header-brand"');
-    expect(html).toContain('href="/ui/preview"');
+    expect(html).toContain('href="/ui"');
     expect(html).toContain('aria-label="Мой семестр — обзор"');
     expect(html).toContain('aria-hidden="true"');
   });
@@ -33,8 +33,8 @@ describe("account menu", () => {
     const html = renderToStaticMarkup(<AccountMenu user={user} />);
     expect(html).toContain('<details class="account-menu"');
     expect(html).toContain('<summary class="account-toggle" aria-label="Меню аккаунта: Исмаил"');
-    expect(html).toContain('href="/ui/profile/preview"');
-    expect(html).toContain('href="/ui/profile/preview?edit=1"');
+    expect(html).toContain('href="/ui/profile"');
+    expect(html).toContain('href="/ui/profile?edit=1"');
     expect(html).toContain('action="/ui/logout" method="post"');
     expect(html).toContain('type="hidden" name="csrf_token" value="profile-csrf-token"');
     expect(html).not.toContain('href="/ui/logout"');
@@ -71,15 +71,25 @@ describe("workspace header", () => {
     expect(html).toContain('<header class="workspace-header"');
     expect(html).not.toContain("sidebar-bottom");
     expect(html).not.toContain("profile-link");
-    expect(html.match(/href="\/ui\/profile\/preview"/g)).toHaveLength(1);
+    expect(html.match(/href="\/ui\/profile"/g)).toHaveLength(1);
     expect(html).toContain('class="mobile-add"');
   });
 
   it("keeps mobile task creation fallback and the option to hide it", () => {
     const html = renderToStaticMarkup(<Shell user={user} section="profile">Профиль</Shell>);
-    expect(html).toContain('href="/ui/tasks/new/preview?return_to=%2Fui%2Fprofile%2Fpreview"');
+    expect(html).toContain('href="/ui/tasks/new?return_to=%2Fui%2Fprofile"');
     const hiddenHtml = renderToStaticMarkup(<Shell user={user} hideMobileAdd>Профиль</Shell>);
     expect(hiddenHtml).not.toContain('class="mobile-add"');
     expect(hiddenHtml).toContain('class="account-menu"');
+  });
+
+  it("uses canonical links in both navigation layouts and preserves creation's return state", () => {
+    const returnTo = "/ui/calendar?date=2026-10-03&lesson=09%3A00";
+    const html = renderToStaticMarkup(<Shell user={user} section="calendar" createReturnTo={returnTo}>Календарь</Shell>);
+    expect(html.match(/href="\/ui\/calendar"/g)).toHaveLength(2);
+    expect(html.match(/href="\/ui\/tasks"/g)).toHaveLength(2);
+    expect(html.match(/href="\/ui"/g)).toHaveLength(4);
+    expect(html).toContain('href="/ui/tasks/new?return_to=%2Fui%2Fcalendar%3Fdate%3D2026-10-03%26lesson%3D09%253A00"');
+    expect(html).not.toContain("/preview");
   });
 });

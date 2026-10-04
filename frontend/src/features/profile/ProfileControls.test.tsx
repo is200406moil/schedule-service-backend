@@ -42,14 +42,14 @@ describe("profile controls", () => {
   it("marks only the profile navigation entry current", () => {
     const html = renderToStaticMarkup(<Shell user={user} section="profile" onCreateTask={() => {}}>Профиль</Shell>);
     expect(html.match(/aria-current="page"/g)).toHaveLength(1);
-    expect(html).toContain('href="/ui/profile/preview"');
-    expect(html).not.toContain('href="/ui/profile"');
+    expect(html).toContain('href="/ui/profile"');
+    expect(html).not.toContain("/preview");
     expect(html).toContain('class="mobile-add"');
   });
 
   it("keeps the direct-create fallback return destination on the profile", () => {
     const html = renderToStaticMarkup(<Shell user={user} section="profile">Профиль</Shell>);
-    expect(html).toContain('href="/ui/tasks/new/preview?return_to=%2Fui%2Fprofile%2Fpreview"');
+    expect(html).toContain('href="/ui/tasks/new?return_to=%2Fui%2Fprofile"');
   });
 
   it("offers retry after task loading fails", () => {
@@ -62,8 +62,8 @@ describe("profile controls", () => {
     const html = renderToStaticMarkup(<ProfileTasks tasks={{ kind: "ready", data: [] }} today={user.today} onRetry={() => {}} onCreate={() => {}} />);
     expect(html).toContain("Активных задач нет");
     expect(html).toContain("Добавить задачу");
-    expect(html).toContain('href="/ui/tasks/preview?filter=active"');
-    expect(html).toContain('href="/ui/tasks/preview?filter=done"');
+    expect(html).toContain('href="/ui/tasks?filter=active"');
+    expect(html).toContain('href="/ui/tasks?filter=done"');
   });
 
   it("shows the profile as readable facts, not a disabled form", () => {

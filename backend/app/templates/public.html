@@ -6,14 +6,14 @@
   <meta name="theme-color" content="#f6f7f9">
   <meta name="color-scheme" content="light">
   <title>{{ page_title }} · Мой семестр</title>
-  {% for stylesheet in preview_styles %}
+  {% for stylesheet in react_styles %}
   <link rel="stylesheet" href="{{ stylesheet }}">
   {% endfor %}
 </head>
 <body>
   <div id="root"></div>
   <script id="public-data" type="application/json">{{ public_data | tojson }}</script>
-  <script type="module" src="{{ preview_script }}"></script>
+  <script type="module" src="{{ react_script }}"></script>
   <noscript>Для входа и регистрации включите JavaScript в браузере.</noscript>
 </body>
 </html>

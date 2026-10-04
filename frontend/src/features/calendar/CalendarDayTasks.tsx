@@ -1,5 +1,6 @@
 import { Check, Clock3, Plus, RefreshCw } from "lucide-react";
 import { isOverdue, taskDueOn } from "../../shared/dates";
+import { calendarHref, editTaskHref } from "../../shared/uiRoutes";
 import type { Loadable, Task } from "../../shared/types";
 import { moscowTime } from "./calendarDates";
 
@@ -16,7 +17,7 @@ export function CalendarDayTasks({ date, tasks, pendingId, onRetry, onToggleTask
   const dayTasks = tasks.kind === "ready"
     ? tasks.data.filter((task) => taskDueOn(task, date)).sort((a, b) => Number(a.status === "done") - Number(b.status === "done") || (a.due_at ?? "").localeCompare(b.due_at ?? ""))
     : [];
-  const returnTo = encodeURIComponent(`/ui/calendar/preview?date=${date}`);
+  const returnTo = calendarHref(date);
   return (
     <section className="calendar-day-section" aria-labelledby="calendar-tasks-title">
       <div className="calendar-section-heading">
@@ -42,7 +43,7 @@ export function CalendarDayTasks({ date, tasks, pendingId, onRetry, onToggleTask
                 onClick={() => onToggleTask(task.id)}
                 aria-label={`Задача «${task.title}»`}
               ><Check size={14} aria-hidden="true" /></button>
-              <a href={`/ui/tasks/${task.id}/edit/preview?return_to=${returnTo}`}>
+              <a href={editTaskHref(task.id, returnTo)}>
                 <strong>{task.title}</strong>
                 <span>{moscowTime(task.due_at ?? "")}{task.subject ? ` · ${task.subject}` : ""}{isOverdue(task) ? " · срок прошёл" : ""}</span>
               </a>

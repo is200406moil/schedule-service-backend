@@ -7,7 +7,7 @@ import "../shared/styles.css";
 import "../shared/responsive.css";
 
 const root = document.getElementById("root");
-const data = document.getElementById("preview-data");
+const data = document.getElementById("page-data");
 
 if (root && data?.textContent) {
   const boot = JSON.parse(data.textContent) as BootData;

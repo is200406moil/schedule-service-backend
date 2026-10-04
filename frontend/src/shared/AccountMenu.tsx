@@ -1,6 +1,7 @@
 import { ChevronDown, LogOut, Pencil, UserRound } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { BootData } from "./types";
+import { uiRoutes } from "./uiRoutes";
 
 export function AccountMenu({ user, isProfile = false }: { user: BootData; isProfile?: boolean }) {
   const details = useRef<HTMLDetailsElement>(null);
@@ -43,8 +44,8 @@ export function AccountMenu({ user, isProfile = false }: { user: BootData; isPro
       <div className="account-dropdown">
         <div className="account-menu-info"><strong>{name}</strong><span>{user.group || "Группа не указана"}</span></div>
         <nav aria-label="Аккаунт">
-          <a href="/ui/profile/preview" aria-current={isProfile ? "page" : undefined}><UserRound size={18} aria-hidden="true" />Профиль</a>
-          <a href="/ui/profile/preview?edit=1"><Pencil size={18} aria-hidden="true" />Редактировать профиль</a>
+          <a href={uiRoutes.profile} aria-current={isProfile ? "page" : undefined}><UserRound size={18} aria-hidden="true" />Профиль</a>
+          <a href={uiRoutes.profileEdit}><Pencil size={18} aria-hidden="true" />Редактировать профиль</a>
         </nav>
         <form action="/ui/logout" method="post" className="account-logout">
           <input type="hidden" name="csrf_token" value={user.csrfToken} />

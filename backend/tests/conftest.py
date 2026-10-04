@@ -39,14 +39,28 @@ def client(
     database_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> TestClient:
 
-    def public_assets(entrypoint: str) -> dict:
-        assert entrypoint == "src/entries/auth-main.tsx"
+    def react_assets(entrypoint: str = "src/entries/overview-main.tsx") -> dict:
+        page = {
+            "src/entries/auth-main.tsx": "auth",
+            "src/entries/overview-main.tsx": "overview",
+            "src/entries/calendar-main.tsx": "calendar",
+            "src/entries/tasks-main.tsx": "tasks",
+            "src/entries/task-editor-main.tsx": "task-editor",
+            "src/entries/profile-main.tsx": "profile",
+        }[entrypoint]
         return {
-            "preview_script": "/static/react/assets/auth-test.js",
-            "preview_styles": ["/static/react/assets/auth-test.css"],
+            "react_script": f"/static/react/assets/{page}-test.js",
+            "react_styles": [f"/static/react/assets/{page}-test.css"],
         }
 
-    monkeypatch.setattr("app.web.public.preview_assets", public_assets)
+    for module in (
+        "app.web.public",
+        "app.routers.ui.dashboard",
+        "app.routers.ui.calendar",
+        "app.routers.ui.tasks",
+        "app.routers.ui.profile",
+    ):
+        monkeypatch.setattr(f"{module}.react_assets", react_assets)
 
     def override_get_db():
         db = database_session_factory()

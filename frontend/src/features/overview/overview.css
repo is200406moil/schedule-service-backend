@@ -32,11 +32,11 @@
   border-radius: 50%;
   pointer-events: none;
 }
-.hero-copy, .hero-aside { position: relative; z-index: 1; }
+.hero-copy, .hero-aside { min-width: 0; position: relative; z-index: 1; }
 .hero-kicker, .hero-aside-label { margin: 0; color: #b9d5d4; font-size: 12px; font-weight: 650; letter-spacing: .09em; text-transform: uppercase; }
 .hero h1 { margin: 15px 0 13px; font-size: clamp(38px, 4vw, 57px); font-weight: 690; letter-spacing: -.06em; line-height: 1.04; }
 .hero h1 em { color: var(--gold); font-style: normal; }
-.hero-copy > p:last-of-type { max-width: 540px; margin: 0; color: #d3dddf; font-size: 16px; line-height: 1.55; }
+.hero-copy > p:last-of-type { max-width: 540px; margin: 0; overflow-wrap: anywhere; color: #d3dddf; font-size: 16px; line-height: 1.55; }
 .hero-actions { margin-top: 25px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
 .quiet-action { min-height: 46px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; font-size: 14px; font-weight: 660; text-decoration: none; }
 .quiet-action { color: #e7f0f0; }
@@ -48,48 +48,9 @@
 .hero-stat span { color: #d1dedf; font-size: 14px; }
 .hero-alert { margin: 12px 0 0; color: #ffc2ba; font-size: 13px; }
 .hero-alert a { text-underline-offset: 3px; }
-.hero-group { width: fit-content; min-height: 34px; margin-top: 18px; padding: 6px 10px; display: inline-flex; align-items: center; gap: 8px; color: #e8f4f0; border: 1px solid #5b746f; border-radius: 7px; font-size: 13px; text-decoration: none; }
+.hero-group { width: fit-content; max-width: 100%; min-height: 34px; margin-top: 18px; padding: 6px 10px; display: inline-flex; align-items: center; gap: 8px; overflow-wrap: anywhere; color: #e8f4f0; border: 1px solid #5b746f; border-radius: 7px; font-size: 13px; text-decoration: none; }
+.hero-group svg { flex-shrink: 0; }
 .hero-group:hover { background: #28465a; }
-
-/* Keep the existing production cascade: shared media rules preceded overview base rules. */
-@media (max-width: 1190px) {
-  .hero { grid-template-columns: minmax(0, 1fr) 260px; padding: 32px; }
-  .content-grid { grid-template-columns: minmax(0, 1fr) minmax(290px, .85fr); }
-}
-
-@media (max-width: 740px) {
-  .hero { min-height: 0; padding: 28px 25px; grid-template-columns: 1fr; gap: 25px; border-radius: 18px; }
-  .hero h1 { font-size: clamp(38px, 8vw, 52px); }
-  .hero-copy > p:last-of-type { font-size: 14px; }
-  .hero-actions { margin-top: 21px; gap: 14px; }
-  .hero-aside { padding: 17px 0 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0 8px; border-left: 0; border-top: 1px solid #476070; }
-  .hero-aside-label { grid-column: 1 / -1; }
-  .hero-stat { grid-template-columns: 20px 28px; gap: 5px; }
-  .hero-stat strong { font-size: 24px; }
-  .hero-stat span { grid-column: 1 / -1; font-size: 12px; }
-  .hero-alert, .hero-group { grid-column: 1 / -1; }
-  .hero-group { margin-top: 10px; }
-  .week-section { margin-top: 29px; }
-  .week-heading h2 { font-size: 20px; }
-  .week-heading h2 span { font-size: 13px; }
-  .week-days { margin: 0 -16px; padding: 2px 16px 13px; display: flex; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: thin; }
-  .day-tile { width: 72px; min-width: 72px; min-height: 103px; scroll-snap-align: start; }
-  .day-tile strong { font-size: 27px; }
-  .content-grid { margin-top: 17px; grid-template-columns: 1fr; gap: 15px; }
-  .agenda-panel, .tasks-panel { min-height: 0; padding: 22px 20px; border-radius: 15px; }
-  .panel-heading h2 { font-size: 21px; }
-}
-
-@media (max-width: 390px) {
-  .hero { padding: 25px 21px; }
-  .quiet-action { font-size: 12px; }
-  .week-heading { align-items: start; }
-  .week-controls { gap: 3px; }
-  .week-controls button { min-width: 40px; height: 40px; padding: 0 7px; }
-  .week-controls button:nth-child(2) { font-size: 11px; }
-  .panel-link { font-size: 0; }
-  .panel-link svg { width: 20px; height: 20px; }
-}
 
 .week-section { margin-top: 36px; }
 .week-heading { margin-bottom: 18px; display: flex; align-items: end; justify-content: space-between; gap: 16px; }
@@ -161,3 +122,44 @@
 .task-due.is-overdue { color: var(--danger); font-weight: 650; }
 .task-add-link { min-height: 42px; width: fit-content; margin-top: 13px; padding: 0 7px; display: inline-flex; align-items: center; gap: 7px; color: var(--blue); background: transparent; border: 0; border-radius: 7px; font-size: 13px; font-weight: 670; text-decoration: none; }
 .task-add-link:hover { background: var(--blue-soft); }
+
+/* Responsive rules follow the base layout so mobile values win the cascade. */
+@media (max-width: 1190px) {
+  .hero { grid-template-columns: minmax(0, 1fr) 260px; padding: 32px; }
+  .content-grid { grid-template-columns: minmax(0, 1fr) minmax(290px, .85fr); }
+}
+
+@media (max-width: 740px) {
+  .hero { min-height: 0; padding: 28px 25px; grid-template-columns: minmax(0, 1fr); gap: 25px; border-radius: 18px; }
+  .hero h1 { font-size: clamp(38px, 8vw, 52px); }
+  .hero-copy > p:last-of-type { font-size: 14px; }
+  .hero-actions { margin-top: 21px; gap: 14px; }
+  .hero-aside { padding: 17px 0 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 8px; border-left: 0; border-top: 1px solid #476070; }
+  .hero-aside-label { grid-column: 1 / -1; }
+  .hero-stat { grid-template-columns: 20px minmax(0, 1fr); gap: 5px; }
+  .hero-stat strong { font-size: 24px; }
+  .hero-stat span { grid-column: 1 / -1; font-size: 12px; }
+  .hero-alert, .hero-group { grid-column: 1 / -1; }
+  .hero-group { min-height: 44px; margin-top: 10px; }
+  .week-section { margin-top: 29px; }
+  .week-heading { flex-wrap: wrap; align-items: start; gap: 12px; }
+  .week-heading h2 { font-size: 20px; }
+  .week-heading h2 span { font-size: 13px; }
+  .week-controls { margin-left: auto; gap: 8px; }
+  .week-days { margin: 0 -16px; padding: 2px 16px 13px; display: flex; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: thin; }
+  .day-tile { width: 72px; min-width: 72px; min-height: 103px; scroll-snap-align: start; }
+  .day-tile strong { font-size: 27px; }
+  .content-grid { margin-top: 17px; grid-template-columns: minmax(0, 1fr); gap: 15px; }
+  .agenda-panel, .tasks-panel { min-height: 0; padding: 22px 20px; border-radius: 15px; }
+  .panel-heading > div { min-width: 0; }
+  .panel-heading h2 { overflow-wrap: anywhere; font-size: 21px; }
+  .panel-link { min-width: 44px; min-height: 44px; }
+  .task-subject, .lesson-room { max-width: 100%; overflow-wrap: anywhere; }
+}
+
+@media (max-width: 390px) {
+  .hero { padding: 25px 21px; }
+  .quiet-action { font-size: 12px; }
+  .panel-link { font-size: 0; }
+  .panel-link svg { width: 20px; height: 20px; }
+}

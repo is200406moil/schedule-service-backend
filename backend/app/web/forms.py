@@ -1,38 +1,50 @@
 import re
 from datetime import date, datetime, time
 
-from fastapi import UploadFile
+from fastapi import Request, UploadFile
 from fastapi.responses import RedirectResponse
-from starlette.status import HTTP_303_SEE_OTHER
+from starlette.status import HTTP_303_SEE_OTHER, HTTP_308_PERMANENT_REDIRECT
 
 from app.core.avatar import MAX_AVATAR_BYTES, encode_avatar
 from app.core.time import normalize_due_at
 
 _SAFE_UI_RETURNS = {
     "/ui": "/ui",
-    "/ui/preview": "/ui/preview",
+    "/ui/preview": "/ui",
     "/ui/calendar": "/ui/calendar",
-    "/ui/calendar/preview": "/ui/calendar/preview",
+    "/ui/calendar/preview": "/ui/calendar",
     "/ui/profile": "/ui/profile",
-    "/ui/profile/preview": "/ui/profile/preview",
+    "/ui/profile/preview": "/ui/profile",
     "/ui/tasks": "/ui/tasks",
-    "/ui/tasks/preview": "/ui/tasks/preview",
-    "/ui/tasks/preview?filter=active": "/ui/tasks/preview?filter=active",
-    "/ui/tasks/preview?filter=today": "/ui/tasks/preview?filter=today",
-    "/ui/tasks/preview?filter=overdue": "/ui/tasks/preview?filter=overdue",
-    "/ui/tasks/preview?filter=done": "/ui/tasks/preview?filter=done",
+    "/ui/tasks/preview": "/ui/tasks",
+    "/ui/tasks/preview?filter=all": "/ui/tasks?filter=all",
+    "/ui/tasks/preview?filter=active": "/ui/tasks?filter=active",
+    "/ui/tasks/preview?filter=today": "/ui/tasks?filter=today",
+    "/ui/tasks/preview?filter=overdue": "/ui/tasks?filter=overdue",
+    "/ui/tasks/preview?filter=done": "/ui/tasks?filter=done",
     "/ui/tasks?filter=active": "/ui/tasks?filter=active",
+    "/ui/tasks?filter=all": "/ui/tasks?filter=all",
     "/ui/tasks?filter=today": "/ui/tasks?filter=today",
     "/ui/tasks?filter=overdue": "/ui/tasks?filter=overdue",
     "/ui/tasks?filter=done": "/ui/tasks?filter=done",
 }
 _CALENDAR_RETURN = re.compile(
-    r"/ui/calendar(?:/preview)?\?date=([0-9]{4}-[0-9]{2}-[0-9]{2})(?:&lesson=([0-9]{2}:[0-9]{2}))?"
+    r"/ui/calendar(?:/preview)?\?date=([0-9]{4}-[0-9]{2}-[0-9]{2})"
+    r"(?:&lesson=([0-9]{2}(?::|%3[Aa])[0-9]{2}))?"
 )
 
 
 def login_redirect() -> RedirectResponse:
     return RedirectResponse(url="/ui/login", status_code=HTTP_303_SEE_OTHER)
+
+
+def canonical_ui_redirect(request: Request, path: str) -> RedirectResponse:
+    """Keep old preview links usable without keeping a second page implementation."""
+    query = request.url.query
+    return RedirectResponse(
+        url=f"{path}?{query}" if query else path,
+        status_code=HTTP_308_PERMANENT_REDIRECT,
+    )
 
 
 def parse_due_at(raw: str | None) -> datetime | None:
@@ -56,10 +68,10 @@ def safe_ui_return(value: str | None) -> str:
     try:
         date.fromisoformat(match.group(1))
         if match.group(2) is not None:
-            time.fromisoformat(match.group(2))
+            time.fromisoformat(match.group(2).replace("%3A", ":").replace("%3a", ":"))
     except ValueError:
         return "/ui/tasks"
-    return value
+    return value.replace("/ui/calendar/preview", "/ui/calendar", 1)
 
 
 def encode_avatar_file(file: UploadFile | None) -> str | None:

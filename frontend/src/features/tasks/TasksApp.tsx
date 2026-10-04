@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { ArrowUpRight, ClipboardList, Plus } from "lucide-react";
+import { ClipboardList, Plus } from "lucide-react";
 import { createTask, deleteTask, getTasks, setTaskStatus, UnauthorizedError } from "../../shared/api";
 import { formatDate, taskWord } from "../../shared/dates";
 import { Shell } from "../../shared/Shell";
 import { SessionEnded } from "../../shared/SessionEnded";
+import { taskListHref } from "../../shared/uiRoutes";
 import { TaskDeleteDialog } from "./TaskDeleteDialog";
 import { TaskCreateDialog } from "./TaskCreateDialog";
 import { TaskListSection } from "./TaskListSection";
@@ -26,10 +27,6 @@ const emptyCopy: Record<TaskFilter, { title: string; detail: string }> = {
   overdue: { title: "Просроченных задач нет", detail: "Здесь появятся открытые задачи с прошедшим сроком." },
   done: { title: "Выполненных задач пока нет", detail: "Отмеченные задачи появятся здесь." },
 };
-
-function filterHref(filter: TaskFilter): string {
-  return filter === "all" ? "/ui/tasks/preview" : `/ui/tasks/preview?filter=${filter}`;
-}
 
 export function TasksApp({ boot }: { boot: TasksBootData }) {
   const [tasks, setTasks] = useState<Loadable<Task[]>>({ kind: "loading" });
@@ -62,7 +59,7 @@ export function TasksApp({ boot }: { boot: TasksBootData }) {
 
   const taskList = tasks.kind === "ready" ? tasks.data : [];
   const view = deriveTaskView(taskList, filter, boot.today);
-  const returnTo = filterHref(filter);
+  const returnTo = taskListHref(filter);
 
   async function handleCreate(data: NewTask) {
     try {
@@ -74,7 +71,7 @@ export function TasksApp({ boot }: { boot: TasksBootData }) {
       const visible = deriveTaskView([created], filter, boot.today).sections.length > 0;
       if (!visible) {
         setFilter("all");
-        window.history.replaceState(window.history.state, "", filterHref("all"));
+        window.history.replaceState(window.history.state, "", taskListHref("all"));
       }
       setNotice(visible ? "Задача добавлена" : "Задача добавлена. Открыт список всех задач.");
     } catch (error) {
@@ -121,7 +118,6 @@ export function TasksApp({ boot }: { boot: TasksBootData }) {
       <div className="workspace-inner tasks-view">
         <div className="page-topline">
           <span>{formatDate(boot.today, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span>
-          <a className="old-version-link" href="/ui/tasks">Прежние задачи <ArrowUpRight size={15} aria-hidden="true" /></a>
         </div>
 
         <header className="tasks-page-header">
@@ -137,7 +133,7 @@ export function TasksApp({ boot }: { boot: TasksBootData }) {
           {filters.map(({ key, label }) => (
             <a
               key={key}
-              href={filterHref(key)}
+              href={taskListHref(key)}
               className={key === filter ? "is-current" : undefined}
               aria-current={key === filter ? "page" : undefined}
             >

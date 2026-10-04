@@ -124,8 +124,6 @@ a { color: inherit; }
 .workspace-inner[class] { max-width: var(--workspace-max-width); }
 .workspace :is(.calendar-page-header, .tasks-page-header, .profile-page-head, .task-editor-page-head) h1 { font-size: var(--page-title-size); font-weight: 690; letter-spacing: -.045em; line-height: 1.12; }
 .page-topline { margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; color: var(--muted); font-size: 14px; }
-.old-version-link { display: inline-flex; align-items: center; gap: 5px; color: #496079; font-size: 13px; text-decoration: none; }
-.old-version-link:hover { color: var(--blue); text-decoration: underline; }
 
 .primary-action { min-height: 46px; display: inline-flex; align-items: center; justify-content: center; gap: 9px; font-size: 14px; font-weight: 660; text-decoration: none; }
 .primary-action { padding: 0 16px; color: var(--navy); background: var(--gold); border: 0; border-radius: 9px; transition: background-color .18s ease, transform .18s ease; }

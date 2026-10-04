@@ -1,7 +1,7 @@
 from fastapi import Request
 
 from app.core.config import settings
-from app.web.frontend import preview_assets
+from app.web.frontend import react_assets
 from app.web.templates import templates
 
 
@@ -13,7 +13,7 @@ def public_response(request: Request, data: dict, *, title: str, status_code: in
         context={
             "page_title": title,
             "public_data": data,
-            **preview_assets("src/entries/auth-main.tsx"),
+            **react_assets("src/entries/auth-main.tsx"),
         },
         status_code=status_code,
         headers={"Cache-Control": "no-store"},

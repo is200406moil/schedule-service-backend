@@ -1,5 +1,6 @@
 import { ArrowUpRight, Check, Trash2 } from "lucide-react";
 import { formatDue, isOverdue } from "../../shared/dates";
+import { editTaskHref } from "../../shared/uiRoutes";
 import type { Task } from "../../shared/types";
 import type { TaskSection } from "./taskView";
 
@@ -25,7 +26,7 @@ export function TaskListSection({ section, today, returnTo, pendingId, onToggle,
       <ul className="tasks-ledger">
         {section.items.map((task) => {
           const overdue = isOverdue(task);
-          const editHref = `/ui/tasks/${task.id}/edit/preview?return_to=${encodeURIComponent(returnTo)}`;
+          const editHref = editTaskHref(task.id, returnTo);
           return (
             <li className={`tasks-ledger-row${task.status === "done" ? " is-done" : ""}${overdue ? " is-overdue" : ""}`} key={task.id}>
               <button

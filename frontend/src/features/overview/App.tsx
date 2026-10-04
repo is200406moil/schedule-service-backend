@@ -5,6 +5,7 @@ import { addDays, formatDate, isOverdue, lessonWord, lessonsForDate, taskWord } 
 import { DayAgenda } from "./DayAgenda";
 import { Shell } from "../../shared/Shell";
 import { SessionEnded } from "../../shared/SessionEnded";
+import { taskListHref, uiRoutes } from "../../shared/uiRoutes";
 import { TaskCreateDialog } from "../tasks/TaskCreateDialog";
 import { TaskPanel } from "./TaskPanel";
 import { subjectNames } from "../tasks/taskEditorModel";
@@ -98,7 +99,6 @@ export function App({ boot }: { boot: BootData }) {
       <div className="workspace-inner">
         <header className="page-topline">
           <span>{formatDate(boot.today, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span>
-          <a href="/ui" className="old-version-link">Прежний обзор <ArrowUpRight size={15} aria-hidden="true" /></a>
         </header>
 
         <section className="hero" aria-labelledby="page-title">
@@ -108,15 +108,15 @@ export function App({ boot }: { boot: BootData }) {
             <p>{boot.firstName ? `${boot.firstName}, ` : ""}выберите день недели и посмотрите, что запланировано.</p>
             <div className="hero-actions">
               <button type="button" className="primary-action" onClick={() => setCreateOpen(true)}><Plus size={18} aria-hidden="true" /> Новая задача</button>
-              <a className="quiet-action" href="/ui/calendar/preview">Открыть календарь <ArrowUpRight size={17} aria-hidden="true" /></a>
+              <a className="quiet-action" href={uiRoutes.calendar}>Открыть календарь <ArrowUpRight size={17} aria-hidden="true" /></a>
             </div>
           </div>
           <div className="hero-aside">
             <span className="hero-aside-label">Ваш план</span>
             <div className="hero-stat"><BookOpenText size={19} aria-hidden="true" /><strong>{schedule.kind === "ready" ? dayLessons.length : "—"}</strong><span>{lessonWord(dayLessons.length)} на день</span></div>
             <div className="hero-stat"><CheckCheck size={19} aria-hidden="true" /><strong>{tasks.kind === "ready" ? activeTasks.length : "—"}</strong><span>{taskWord(activeTasks.length)} в работе</span></div>
-            {overdueCount > 0 ? <p className="hero-alert">Просрочено: {overdueCount}. <a href="/ui/tasks/preview?filter=overdue">Посмотреть</a></p> : null}
-            <a className="hero-group" href="/ui/profile/preview">{boot.group || "Указать учебную группу"}<ArrowUpRight size={15} aria-hidden="true" /></a>
+            {overdueCount > 0 ? <p className="hero-alert">Просрочено: {overdueCount}. <a href={taskListHref("overdue")}>Посмотреть</a></p> : null}
+            <a className="hero-group" href={uiRoutes.profile}>{boot.group || "Указать учебную группу"}<ArrowUpRight size={15} aria-hidden="true" /></a>
           </div>
         </section>
 

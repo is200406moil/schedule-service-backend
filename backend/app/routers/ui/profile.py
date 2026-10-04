@@ -12,16 +12,16 @@ from app.core.time import as_utc
 from app.models import User
 from app.schemas.user import UserRead, UserUpdate
 from app.services import task_service, user_service
-from app.web.forms import encode_avatar_file, login_redirect
-from app.web.frontend import preview_assets
+from app.web.forms import canonical_ui_redirect, encode_avatar_file, login_redirect
+from app.web.frontend import react_assets
 from app.web.presentation import due_label, is_overdue, moscow_today
 from app.web.templates import templates
 
 router = APIRouter()
 
 
-@router.get("/profile/preview", include_in_schema=False)
-def profile_preview(
+@router.get("/profile")
+def profile_page(
     request: Request,
     user: User | None = Depends(get_current_user_optional),
 ):
@@ -29,12 +29,12 @@ def profile_preview(
         return login_redirect()
     return templates.TemplateResponse(
         request=request,
-        name="preview.html",
+        name="react.html",
         context={
             "user": user,
             "page_title": "Профиль",
-            **preview_assets("src/entries/profile-main.tsx"),
-            "preview_data": {
+            **react_assets("src/entries/profile-main.tsx"),
+            "page_data": {
                 "firstName": user.first_name or "",
                 "group": user.group_name or "",
                 "avatar": "",  # The profile below already contains the image.
@@ -45,6 +45,11 @@ def profile_preview(
             },
         },
     )
+
+
+@router.get("/profile/preview", include_in_schema=False)
+def profile_preview_redirect(request: Request):
+    return canonical_ui_redirect(request, "/ui/profile")
 
 
 def _clean_optional(value: str | None) -> str | None:
@@ -106,6 +111,7 @@ def _profile_response(
     open_edit: bool = False,
     status_code: int = status.HTTP_200_OK,
 ):
+    """Compatibility response for validation errors from legacy form submissions."""
     return templates.TemplateResponse(
         request=request,
         name="profile.html",
@@ -117,22 +123,6 @@ def _profile_response(
             open_edit=open_edit,
         ),
         status_code=status_code,
-    )
-
-
-@router.get("/profile")
-def profile_page(
-    request: Request,
-    db: Session = Depends(get_db),
-    user: User | None = Depends(get_current_user_optional),
-):
-    if user is None:
-        return login_redirect()
-    return _profile_response(
-        request,
-        db,
-        user,
-        error=request.query_params.get("err"),
     )
 
 
@@ -150,6 +140,7 @@ def profile_submit(
     form_kind: str = Form("details"),
     csrf_token: str | None = Form(None),
 ):
+    """Compatibility-only form endpoint; the React profile uses the auth API."""
     validate_csrf_token(request, csrf_token, settings.secret_key)
     if user is None:
         return login_redirect()

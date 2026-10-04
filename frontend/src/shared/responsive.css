@@ -28,7 +28,6 @@
   .account-toggle { gap: 6px; padding: 6px; }
   .account-toggle-copy { display: none; }
   .page-topline { margin-bottom: 17px; font-size: 12px; }
-  .old-version-link { font-size: 12px; }
 }
 
 @media (max-width: 390px) {

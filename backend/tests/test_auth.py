@@ -67,7 +67,7 @@ def test_web_registration_and_login_share_authentication_rules(
     assert client.cookies.get("access_token")
     profile_response = client.get("/ui/profile")
     assert profile_response.status_code == 200
-    assert "Анна" in profile_response.text
+    assert profile_response.context["page_data"]["firstName"] == "Анна"
 
 
 @pytest.mark.parametrize("channel", ["api", "web"])

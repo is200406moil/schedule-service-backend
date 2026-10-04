@@ -78,6 +78,18 @@ afterEach(async () => {
 });
 
 describe("task editor interactions", () => {
+  it("retains the full canonical return destination in back, cancel and missing-task links", async () => {
+    const returnTo = "/ui/calendar?date=2026-10-03&lesson=09%3A00#main";
+    await act(() => root.render(<TaskEditorApp boot={{ ...boot, returnTo, initialSubject: "Алгоритмы" }} />));
+    expect(host.querySelector(".task-editor-back")!.getAttribute("href")).toBe(returnTo);
+    expect(host.querySelector(".task-editor-actions a")!.getAttribute("href")).toBe(returnTo);
+    expect(field("subject").value).toBe("Алгоритмы");
+    expect(host.querySelector(".old-version-link")).toBeNull();
+    vi.mocked(getTask).mockRejectedValue(new ApiError(404));
+    await act(() => root.render(<TaskEditorApp boot={{ ...boot, taskId: 12, returnTo }} />));
+    expect(host.querySelector(".task-editor-load-error a")!.getAttribute("href")).toBe(returnTo);
+  });
+
   it("loads task and subject suggestions independently and aborts both requests on cleanup", async () => {
     const taskRequest = deferred<Task>();
     const scheduleRequest = deferred<Schedule>();

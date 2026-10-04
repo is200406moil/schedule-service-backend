@@ -9,20 +9,20 @@ from starlette.status import HTTP_303_SEE_OTHER
 from app.core.config import settings
 from app.core.csrf import validate_csrf_token
 from app.core.deps import get_current_user_optional, get_db
-from app.core.time import datetime_local_value, moscow_date
+from app.core.time import datetime_local_value
 from app.models import Task, User
 from app.schemas.task import TaskCreate, TaskUpdate
 from app.services import task_service
-from app.web.forms import login_redirect, parse_due_at, safe_ui_return
-from app.web.frontend import preview_assets
-from app.web.presentation import is_overdue, moscow_today, task_sections
+from app.web.forms import canonical_ui_redirect, login_redirect, parse_due_at, safe_ui_return
+from app.web.frontend import react_assets
+from app.web.presentation import moscow_today
 from app.web.templates import templates
 
 router = APIRouter()
 
 
-@router.get("/tasks/preview", include_in_schema=False)
-def tasks_preview(
+@router.get("/tasks")
+def tasks_list(
     request: Request,
     user: User | None = Depends(get_current_user_optional),
 ):
@@ -30,12 +30,12 @@ def tasks_preview(
         return login_redirect()
     return templates.TemplateResponse(
         request=request,
-        name="preview.html",
+        name="react.html",
         context={
             "user": user,
             "page_title": "Задачи",
-            **preview_assets("src/entries/tasks-main.tsx"),
-            "preview_data": {
+            **react_assets("src/entries/tasks-main.tsx"),
+            "page_data": {
                 "firstName": user.first_name or "",
                 "group": user.group_name or "",
                 "avatar": user.avatar_base64 or "",
@@ -47,20 +47,22 @@ def tasks_preview(
     )
 
 
-def _task_editor_preview(request: Request, user: User, *, task_id: int | None, page_title: str):
+@router.get("/tasks/preview", include_in_schema=False)
+def tasks_preview_redirect(request: Request):
+    return canonical_ui_redirect(request, "/ui/tasks")
+
+
+def _task_editor_response(request: Request, user: User, *, task_id: int | None, page_title: str):
     subject = request.query_params.get("subject")
-    requested_return = request.query_params.get("return_to")
-    return_to = safe_ui_return(requested_return)
-    if requested_return is None or (return_to == "/ui/tasks" and requested_return != "/ui/tasks"):
-        return_to = "/ui/tasks/preview"
+    return_to = safe_ui_return(request.query_params.get("return_to"))
     return templates.TemplateResponse(
         request=request,
-        name="preview.html",
+        name="react.html",
         context={
             "user": user,
             "page_title": page_title,
-            **preview_assets("src/entries/task-editor-main.tsx"),
-            "preview_data": {
+            **react_assets("src/entries/task-editor-main.tsx"),
+            "page_data": {
                 "firstName": user.first_name or "",
                 "group": user.group_name or "",
                 "avatar": user.avatar_base64 or "",
@@ -100,6 +102,7 @@ def _task_form_response(
     error: str | None = None,
     status_code: int = status.HTTP_200_OK,
 ):
+    """Compatibility response for validation errors from legacy form submissions."""
     return templates.TemplateResponse(
         request=request,
         name="task_form.html",
@@ -115,78 +118,19 @@ def _task_form_response(
     )
 
 
-@router.get("/tasks")
-def tasks_list(
-    request: Request,
-    db: Session = Depends(get_db),
-    user: User | None = Depends(get_current_user_optional),
-):
-    if user is None:
-        return login_redirect()
-    all_tasks = task_service.list_tasks(db, user)
-    today = moscow_today()
-    counts = {
-        "all": len(all_tasks),
-        "active": sum(task.status != "done" for task in all_tasks),
-        "today": sum(
-            task.status != "done" and moscow_date(task.due_at) == today for task in all_tasks
-        ),
-        "overdue": sum(task.status != "done" and is_overdue(task.due_at) for task in all_tasks),
-        "done": sum(task.status == "done" for task in all_tasks),
-    }
-    task_filter = request.query_params.get("filter", "all")
-    if task_filter not in counts:
-        task_filter = "all"
-    if task_filter == "active":
-        tasks = [task for task in all_tasks if task.status != "done"]
-    elif task_filter == "today":
-        tasks = [
-            task
-            for task in all_tasks
-            if task.status != "done" and moscow_date(task.due_at) == today
-        ]
-    elif task_filter == "overdue":
-        tasks = [task for task in all_tasks if task.status != "done" and is_overdue(task.due_at)]
-    elif task_filter == "done":
-        tasks = [task for task in all_tasks if task.status == "done"]
-    else:
-        tasks = all_tasks
-    return templates.TemplateResponse(
-        request=request,
-        name="tasks_list.html",
-        context={
-            "user": user,
-            "task_sections": task_sections(tasks, today),
-            "task_filter": task_filter,
-            "task_counts": counts,
-        },
-    )
-
-
 @router.get("/tasks/new")
-def task_new_form(
+def task_new_page(
     request: Request,
     user: User | None = Depends(get_current_user_optional),
 ):
     if user is None:
         return login_redirect()
-    return _task_form_response(
-        request,
-        user,
-        task=None,
-        heading="Новая задача",
-        return_to=safe_ui_return(request.query_params.get("return_to")),
-    )
+    return _task_editor_response(request, user, task_id=None, page_title="Новая задача")
 
 
 @router.get("/tasks/new/preview", include_in_schema=False)
-def task_new_preview(
-    request: Request,
-    user: User | None = Depends(get_current_user_optional),
-):
-    if user is None:
-        return login_redirect()
-    return _task_editor_preview(request, user, task_id=None, page_title="Новая задача")
+def task_new_preview_redirect(request: Request):
+    return canonical_ui_redirect(request, "/ui/tasks/new")
 
 
 @router.post("/tasks/new")
@@ -202,6 +146,7 @@ def task_new_submit(
     return_to: str | None = Form(None),
     csrf_token: str | None = Form(None),
 ):
+    """Compatibility-only form endpoint; the React editor uses the tasks API."""
     validate_csrf_token(request, csrf_token, settings.secret_key)
     if user is None:
         return login_redirect()
@@ -240,35 +185,22 @@ def task_new_submit(
 
 
 @router.get("/tasks/{task_id}/edit")
-def task_edit_form(
+def task_edit_page(
     request: Request,
     task_id: int,
-    db: Session = Depends(get_db),
     user: User | None = Depends(get_current_user_optional),
 ):
     if user is None:
         return login_redirect()
-    task = task_service.find_task(db, user, task_id)
-    if task is None:
-        return RedirectResponse(url="/ui/tasks", status_code=HTTP_303_SEE_OTHER)
-    return _task_form_response(
-        request,
-        user,
-        task=task,
-        heading="Редактировать задачу",
-        return_to=safe_ui_return(request.query_params.get("return_to")),
-    )
+    return _task_editor_response(request, user, task_id=task_id, page_title="Редактировать задачу")
 
 
 @router.get("/tasks/{task_id}/edit/preview", include_in_schema=False)
-def task_edit_preview(
+def task_edit_preview_redirect(
     request: Request,
     task_id: int,
-    user: User | None = Depends(get_current_user_optional),
 ):
-    if user is None:
-        return login_redirect()
-    return _task_editor_preview(request, user, task_id=task_id, page_title="Редактировать задачу")
+    return canonical_ui_redirect(request, f"/ui/tasks/{task_id}/edit")
 
 
 @router.post("/tasks/{task_id}/edit")
@@ -286,6 +218,7 @@ def task_edit_submit(
     return_to: str | None = Form(None),
     csrf_token: str | None = Form(None),
 ):
+    """Compatibility-only form endpoint; the React editor uses the tasks API."""
     validate_csrf_token(request, csrf_token, settings.secret_key)
     if user is None:
         return login_redirect()
@@ -336,6 +269,7 @@ def task_delete(
     return_to: str | None = Form(None),
     csrf_token: str | None = Form(None),
 ):
+    """Compatibility-only form endpoint; the React pages use the tasks API."""
     validate_csrf_token(request, csrf_token, settings.secret_key)
     if user is None:
         return login_redirect()

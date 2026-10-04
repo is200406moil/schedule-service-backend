@@ -120,17 +120,22 @@ jobs:
           curl --fail --show-error --retry 5 --retry-delay 2 http://localhost:8000/ui/email-verification > /dev/null
           curl --fail --show-error --retry 5 --retry-delay 2 http://localhost:8000/ui/verify-email > /dev/null
           curl --fail --show-error --retry 5 --retry-delay 2 http://localhost:8000/ui/privacy > /dev/null
-      - name: Verify frontend assets are served by the application
+      - name: Verify React pages, old links and built assets
         run: |
           python - <<'PY'
+          import json
+          import os
           from html.parser import HTMLParser
-          from urllib.parse import urljoin
-          from urllib.request import urlopen
+          from uuid import uuid4
+          from urllib.parse import urlencode, urljoin
+          from urllib.request import Request, urlopen
 
           class Assets(HTMLParser):
               def __init__(self):
                   super().__init__()
                   self.urls = []
+                  self.boot = ""
+                  self.in_boot = False
 
               def handle_starttag(self, tag, attrs):
                   values = dict(attrs)
@@ -138,16 +143,76 @@ jobs:
                       self.urls.append(values["src"])
                   if tag == "link" and values.get("rel") == "stylesheet":
                       self.urls.append(values["href"])
+                  if tag == "script" and values.get("id") == "page-data":
+                      self.in_boot = True
 
-          page = "http://localhost:8000/ui/login"
-          parser = Assets()
-          with urlopen(page, timeout=5) as response:
-              parser.feed(response.read().decode())
-          assert parser.urls, "Login page does not reference frontend assets"
-          assert any(url.startswith("/static/react/") for url in parser.urls)
-          for url in parser.urls:
-              with urlopen(urljoin(page, url), timeout=5) as response:
-                  assert response.status == 200, url
+              def handle_endtag(self, tag):
+                  if tag == "script":
+                      self.in_boot = False
+
+              def handle_data(self, data):
+                  if self.in_boot:
+                      self.boot += data
+
+          base = os.environ.get("UI_SMOKE_BASE_URL", "http://localhost:8000")
+
+          def post_json(path, data, token=None):
+              headers = {"Content-Type": "application/json"}
+              if token:
+                  headers["Authorization"] = f"Bearer {token}"
+              request = Request(base + path, data=json.dumps(data).encode(), headers=headers)
+              with urlopen(request, timeout=10) as response:
+                  return json.load(response)
+
+          credentials = {"email": f"react-smoke-{uuid4().hex}@example.com", "password": "ci-react-smoke-password"}
+          post_json("/auth/register", credentials)
+          token = post_json("/auth/login", credentials)["access_token"]
+          task_id = post_json("/tasks", {"title": "React smoke task"}, token)["id"]
+          headers = {"Authorization": f"Bearer {token}"}
+          checked_assets = set()
+
+          def page(path, expected=None):
+              request = Request(base + path, headers={} if expected is None else headers)
+              parser = Assets()
+              with urlopen(request, timeout=10) as response:
+                  assert response.status == 200, path
+                  assert response.url == base + path, (path, response.url)
+                  html = response.read().decode()
+              parser.feed(html)
+              assert parser.urls and all(url.startswith("/static/react/") for url in parser.urls), path
+              assert "/static/calendar.js" not in html and "/static/dashboard.js" not in html, path
+              if expected is not None:
+                  boot = json.loads(parser.boot)
+                  for key, value in expected.items():
+                      assert boot[key] == value, (path, key)
+              for url in parser.urls:
+                  if url not in checked_assets:
+                      with urlopen(urljoin(base, url), timeout=10) as response:
+                          assert response.status == 200, url
+                      checked_assets.add(url)
+
+          page("/ui/login")
+          page("/ui", {})
+          page("/ui/calendar?date=2026-10-02&lesson=10:40", {"initialDate": "2026-10-02", "initialLesson": "10:40"})
+          page("/ui/tasks?filter=overdue", {"initialFilter": "overdue"})
+          page("/ui/profile?edit=1", {"initialEdit": True})
+          calendar_return = "/ui/calendar?date=2026-10-02"
+          new_query = urlencode({"return_to": calendar_return, "subject": "Python"})
+          page("/ui/tasks/new?" + new_query, {"taskId": None, "returnTo": calendar_return, "initialSubject": "Python"})
+          page(f"/ui/tasks/{task_id}/edit", {"taskId": task_id, "returnTo": "/ui/tasks"})
+          aliases = [
+              ("/ui/preview", "/ui"),
+              ("/ui/calendar/preview?date=2026-10-02&lesson=10:40", "/ui/calendar?date=2026-10-02&lesson=10:40"),
+              ("/ui/tasks/preview?filter=overdue", "/ui/tasks?filter=overdue"),
+              ("/ui/profile/preview?edit=1", "/ui/profile?edit=1"),
+              ("/ui/tasks/new/preview?" + new_query, "/ui/tasks/new?" + new_query),
+              (f"/ui/tasks/{task_id}/edit/preview", f"/ui/tasks/{task_id}/edit"),
+          ]
+          for old, canonical in aliases:
+              with urlopen(Request(base + old, headers=headers), timeout=10) as response:
+                  assert response.status == 200 and response.url == base + canonical, old
+                  assert 'id="page-data"' in response.read().decode(), old
+          print(f"Verified 7 React pages, 6 old links and {len(checked_assets)} built assets")
           PY
       - name: Show container logs on failure
         if: failure()

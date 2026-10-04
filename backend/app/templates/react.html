@@ -5,13 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f6f5f0">
   <title>{{ page_title }} · Мой семестр</title>
-  {% for stylesheet in preview_styles %}
+  {% for stylesheet in react_styles %}
   <link rel="stylesheet" href="{{ stylesheet }}">
   {% endfor %}
 </head>
 <body>
   <div id="root"></div>
-  <script id="preview-data" type="application/json">{{ preview_data | tojson }}</script>
-  <script type="module" src="{{ preview_script }}"></script>
+  <script id="page-data" type="application/json">{{ page_data | tojson }}</script>
+  <script type="module" src="{{ react_script }}"></script>
+  <noscript>Для расписания, задач и профиля включите JavaScript в браузере.</noscript>
 </body>
 </html>

@@ -7,7 +7,7 @@ from app.core.paths import FRONTEND_DIST_DIR
 MANIFEST = FRONTEND_DIST_DIR / ".vite" / "manifest.json"
 
 
-def preview_assets(entrypoint: str = "src/entries/overview-main.tsx") -> dict[str, object]:
+def react_assets(entrypoint: str = "src/entries/overview-main.tsx") -> dict[str, object]:
     """Resolve the self-hosted, content-hashed Vite assets for a React page."""
     try:
         manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
@@ -32,6 +32,6 @@ def preview_assets(entrypoint: str = "src/entries/overview-main.tsx") -> dict[st
             detail="Frontend is not built. Run npm run build in frontend/.",
         ) from exc
     return {
-        "preview_script": f"/static/react/{script}",
-        "preview_styles": [f"/static/react/{style}" for style in styles],
+        "react_script": f"/static/react/{script}",
+        "react_styles": [f"/static/react/{style}" for style in styles],
     }

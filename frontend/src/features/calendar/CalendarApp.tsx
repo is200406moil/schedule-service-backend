@@ -8,6 +8,7 @@ import { MonthGrid } from "./MonthGrid";
 import { TaskCreateDialog } from "../tasks/TaskCreateDialog";
 import { SessionEnded } from "../../shared/SessionEnded";
 import { Shell } from "../../shared/Shell";
+import { calendarHref, uiRoutes } from "../../shared/uiRoutes";
 import { subjectNames } from "../tasks/taskEditorModel";
 import type { CalendarBootData, Lesson, Loadable, NewTask, Schedule, Task } from "../../shared/types";
 
@@ -28,7 +29,7 @@ export function CalendarApp({ boot }: { boot: CalendarBootData }) {
 
   useEffect(() => {
     if (boot.initialDate && boot.initialDate !== initialDate) {
-      window.history.replaceState({}, "", `/ui/calendar/preview?date=${initialDate}`);
+      window.history.replaceState({}, "", calendarHref(initialDate));
     }
   }, [boot.initialDate, initialDate]);
 
@@ -89,7 +90,7 @@ export function CalendarApp({ boot }: { boot: CalendarBootData }) {
     setSelectedDate(key);
     setViewMonth(`${key.slice(0, 7)}-01`);
     setHighlightLesson("");
-    window.history.replaceState({}, "", `/ui/calendar/preview?date=${key}`);
+    window.history.replaceState({}, "", calendarHref(key));
   }
 
   function moveMonth(delta: number) {
@@ -156,7 +157,6 @@ export function CalendarApp({ boot }: { boot: CalendarBootData }) {
       <div className="workspace-inner calendar-view">
         <div className="page-topline">
           <span>{formatDate(boot.today, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span>
-          <a className="old-version-link" href="/ui/calendar">Прежний календарь</a>
         </div>
         <header className="calendar-page-header">
           <div>
@@ -172,7 +172,7 @@ export function CalendarApp({ boot }: { boot: CalendarBootData }) {
             <div className="calendar-month-toolbar">
               <div className="calendar-month-title">
                 <h2 id="calendar-month-title">{monthLabel(viewMonth)}</h2>
-                <a href="/ui/profile/preview"><GraduationCap size={16} aria-hidden="true" />{boot.group || "Указать группу"}</a>
+                <a href={uiRoutes.profile}><GraduationCap size={16} aria-hidden="true" />{boot.group || "Указать группу"}</a>
               </div>
               <div className="calendar-month-actions">
                 <button type="button" onClick={() => moveMonth(-1)} disabled={shiftMonth(viewMonth, -1) === viewMonth} aria-label="Предыдущий месяц"><ChevronLeft size={19} aria-hidden="true" /></button>

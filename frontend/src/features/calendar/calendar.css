@@ -60,6 +60,9 @@
 .calendar-lesson-list, .calendar-task-list { margin: 5px 0 0; padding: 0; list-style: none; }
 .calendar-lesson { padding: 15px 0; display: grid; grid-template-columns: 55px minmax(0, 1fr); gap: 12px; border-bottom: 1px solid #e9edeb; }
 .calendar-lesson:last-child, .calendar-task:last-child { border-bottom: 0; }
+.calendar-break { min-width: 0; margin: 8px 0; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--muted); background: var(--canvas); border: 1px solid var(--line); border-radius: 8px; font-size: 12px; line-height: 1.5; }
+.calendar-break > span { display: inline-flex; align-items: center; gap: 6px; }
+.calendar-break > strong { flex-shrink: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
 .calendar-lesson.is-highlighted { margin: 0 -10px; padding: 15px 10px; background: var(--blue-soft); border-radius: 9px; }
 .calendar-lesson-time { padding-top: 2px; display: grid; align-content: start; gap: 4px; font-variant-numeric: tabular-nums; }
 .calendar-lesson-time strong { color: var(--blue); font-size: 14px; }

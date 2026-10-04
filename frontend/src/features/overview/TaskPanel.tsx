@@ -1,5 +1,6 @@
 import { ArrowUpRight, Check, Plus, RefreshCw } from "lucide-react";
 import { formatDue, isOverdue } from "../../shared/dates";
+import { editTaskHref, uiRoutes } from "../../shared/uiRoutes";
 import type { Loadable, Task } from "../../shared/types";
 
 type Props = {
@@ -26,7 +27,7 @@ export function TaskPanel({ tasks, today, pendingId, onComplete, onRetry, onCrea
           <p className="eyebrow">В фокусе</p>
           <h2 id="tasks-heading">Ближайшие задачи</h2>
         </div>
-        <a className="panel-link" href="/ui/tasks/preview" aria-label="Открыть все задачи"><ArrowUpRight size={19} aria-hidden="true" /></a>
+        <a className="panel-link" href={uiRoutes.tasks} aria-label="Открыть все задачи"><ArrowUpRight size={19} aria-hidden="true" /></a>
       </div>
 
       {tasks.kind === "loading" ? (
@@ -57,7 +58,7 @@ export function TaskPanel({ tasks, today, pendingId, onComplete, onRetry, onCrea
                   onClick={() => onComplete(task.id)}
                   aria-label={`Отметить задачу «${task.title}» выполненной`}
                 ><Check size={16} aria-hidden="true" /></button>
-                <a className="task-content" href={`/ui/tasks/${task.id}/edit/preview?return_to=/ui/preview`}>
+                <a className="task-content" href={editTaskHref(task.id, uiRoutes.overview)}>
                   <strong>{task.title}</strong>
                   {task.subject ? <span className="task-subject">{task.subject}</span> : null}
                   <span className={`task-due${isOverdue(task) ? " is-overdue" : ""}`}>{formatDue(task.due_at, today)}</span>
