@@ -3,7 +3,7 @@ import type { BootData } from "./types";
 
 export function SessionEnded({ user, section }: { user: BootData; section: "overview" | "calendar" | "tasks" | "profile" }) {
   return (
-    <Shell user={user} section={section} hideMobileAdd>
+    <Shell user={user} section={section} hideMobileAdd allowGroupPrompt={false}>
       <div className="workspace-inner">
         <section className="session-ended" aria-labelledby="session-title">
           <p className="eyebrow">Мой семестр</p>

@@ -36,6 +36,31 @@ def test_minimal_web_registration_creates_account_without_profile(
     )
     assert response.status_code == 303
     assert client.cookies.get("access_token")
+    assert response.headers["location"] == "/ui?choose_group=1"
+
+
+@pytest.mark.parametrize("group", [None, "ИКБО-14-23"])
+def test_login_prompts_only_when_group_is_missing(client: TestClient, group: str | None) -> None:
+    credentials = {"email": "group-choice@example.com", "password": "group-choice-password"}
+    response = client.post("/auth/register", json={**credentials, "group_name": group})
+    assert response.status_code == 201
+    client.get("/ui/login")
+    csrf = client.cookies.get("csrf_token")
+    response = client.post(
+        "/ui/login", data={**credentials, "csrf_token": csrf}, follow_redirects=False
+    )
+    assert response.status_code == 303
+    assert response.headers["location"] == ("/ui" if group else "/ui?choose_group=1")
+    if group is None:
+        saved = client.patch(
+            "/auth/me", json={"group_name": "ИКБО-14-23"}, headers={"X-CSRF-Token": csrf}
+        )
+        assert saved.status_code == 200
+        assert saved.json()["group_name"] == "ИКБО-14-23"
+        response = client.post(
+            "/ui/login", data={**credentials, "csrf_token": csrf}, follow_redirects=False
+        )
+        assert response.headers["location"] == "/ui"
 
 
 @pytest.mark.parametrize("page", ["login", "register"])

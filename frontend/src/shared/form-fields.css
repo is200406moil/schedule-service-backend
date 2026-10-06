@@ -3,7 +3,7 @@
 .form-field label svg { margin-right: 1px; color: var(--green); }
 .form-field label small { margin-left: auto; color: #6f7d82; font-size: 11px; font-weight: 500; white-space: nowrap; }
 .form-field-required { color: var(--danger); font-size: 19px; line-height: 1; }
-.form-field input, .form-field textarea { width: 100%; min-height: 47px; padding: 11px 13px; color: var(--ink); background: #fff; border: 1px solid #bac8c8; border-radius: 9px; font: inherit; font-size: 14px; line-height: 1.45; transition: border-color .15s ease, box-shadow .15s ease; }
+.form-field input, .form-field textarea { box-sizing: border-box; width: 100%; min-width: 0; max-width: 100%; min-height: 47px; padding: 11px 13px; color: var(--ink); background: #fff; border: 1px solid #bac8c8; border-radius: 9px; font: inherit; font-size: 14px; line-height: 1.45; transition: border-color .15s ease, box-shadow .15s ease; }
 .form-field textarea { min-height: 113px; display: block; resize: vertical; }
 .form-field input::placeholder, .form-field textarea::placeholder { color: #87959a; opacity: 1; }
 .form-field input:hover, .form-field textarea:hover { border-color: #819b9d; }
@@ -15,7 +15,8 @@
 .form-field-hint { color: var(--muted); }
 .form-field-error { color: var(--danger); font-weight: 650; }
 .form-fields-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 17px; }
-.form-field input[type="datetime-local"] { color-scheme: light; font-variant-numeric: tabular-nums; }
+.form-field input[type="date"], .form-field input[type="datetime-local"] { display: block; appearance: none; color-scheme: light; font-variant-numeric: tabular-nums; }
+.form-field input::-webkit-date-and-time-value { min-width: 0; text-align: left; }
 @media (prefers-reduced-motion: reduce) {
   .form-field input, .form-field textarea { transition: none; }
 }

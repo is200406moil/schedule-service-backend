@@ -63,7 +63,7 @@ def test_web_registration_and_login_share_authentication_rules(
     )
 
     assert login_response.status_code == 303
-    assert login_response.headers["location"] == "/ui"
+    assert login_response.headers["location"] == "/ui?choose_group=1"
     assert client.cookies.get("access_token")
     profile_response = client.get("/ui/profile")
     assert profile_response.status_code == 200
@@ -94,7 +94,7 @@ def test_password_bounds_count_unicode_code_points(
         assert response.status_code == 303
         login = client.post("/ui/login", data=credentials, follow_redirects=False)
         assert login.status_code == 303
-        assert login.headers["location"] == "/ui"
+        assert login.headers["location"] == "/ui?choose_group=1"
         assert client.cookies.get("access_token")
     else:
         assert response.status_code == 201

@@ -79,7 +79,18 @@ jobs:
             node --check "$file"
           done
       - name: Run tests with coverage
-        run: python -m pytest --cov=app --cov-branch --cov-report=term-missing --cov-fail-under=80
+        run: python -m pytest --cov=app --cov-branch --cov-report=term-missing --cov-report=xml:coverage.xml --cov-report=html:htmlcov --junitxml=junit.xml --cov-fail-under=80
+      - name: Save test and coverage reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-test-reports
+          path: |
+            backend/coverage.xml
+            backend/htmlcov/
+            backend/junit.xml
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Check PostgreSQL migrations
         run: |
           python -m alembic upgrade head

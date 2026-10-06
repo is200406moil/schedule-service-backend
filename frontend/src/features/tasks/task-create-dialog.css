@@ -7,8 +7,8 @@
 .task-create-head p { margin: 9px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
 .task-create-close { width: 44px; height: 44px; display: grid; flex: 0 0 auto; place-items: center; color: var(--navy); background: #eef1ef; border: 0; border-radius: 9px; }
 .task-create-close:hover:not(:disabled) { background: #e0e6e1; }
-.task-create-dialog form { min-width: 0; display: grid; gap: 22px; }
-.task-create-body { min-width: 0; display: grid; gap: 22px; }
+.task-create-dialog form { min-width: 0; max-width: 100%; display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }
+.task-create-body { min-width: 0; max-width: 100%; display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; overflow-wrap: anywhere; }
 .task-create-dialog textarea { min-height: 92px; }
 .task-create-actions { padding-top: 20px; display: flex; align-items: center; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--line); }
 .task-create-actions button { min-height: 46px; padding: 0 18px; border: 0; border-radius: 9px; font: inherit; font-size: 13px; font-weight: 650; transition: background-color .15s ease; }
@@ -33,8 +33,8 @@
   .task-create-head { margin: 0; padding: 4px 20px 20px; }
   .task-create-head h2 { font-size: 26px; }
   .task-create-dialog form { min-height: 0; display: flex; flex-direction: column; gap: 0; overflow: hidden; }
-  .task-create-body { min-height: 0; padding: 0 20px 20px; gap: 20px; overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: 16px; }
-  .task-create-dialog .form-fields-row { grid-template-columns: 1fr; gap: 20px; }
+  .task-create-body { min-height: 0; padding: 0 20px 20px; gap: 20px; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: 16px; }
+  .task-create-dialog .form-fields-row { min-width: 0; grid-template-columns: minmax(0, 1fr); gap: 20px; }
   .task-create-dialog .form-field input, .task-create-dialog .form-field textarea { font-size: 16px; }
   .task-create-actions { flex: 0 0 auto; padding: 16px 20px calc(16px + env(safe-area-inset-bottom)); gap: 10px; background: var(--paper); }
   .task-create-actions button { min-height: 48px; padding: 0 15px; }

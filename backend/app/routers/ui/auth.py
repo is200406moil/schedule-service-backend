@@ -188,7 +188,8 @@ def login_submit(
         )
     login_rate_limiter.reset(rate_limit_key)
     token = auth_service.create_access_token_for_user(user)
-    return _cookie_response(token, location="/ui")
+    location = "/ui" if user.group_name and user.group_name.strip() else "/ui?choose_group=1"
+    return _cookie_response(token, location=location)
 
 
 @router.get("/register")

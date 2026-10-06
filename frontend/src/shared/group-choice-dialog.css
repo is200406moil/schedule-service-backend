@@ -1,0 +1,23 @@
+.group-choice-dialog { width: min(480px, calc(100vw - 32px)); max-width: none; max-height: calc(100dvh - 32px); margin: auto; padding: 28px; overflow-y: auto; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 24px 70px #0d1d2d40; }
+.group-choice-dialog::backdrop { background: #1022339c; }
+.group-choice-dialog h2 { margin: 0 0 12px; color: var(--navy); font-size: 24px; line-height: 1.25; text-wrap: balance; }
+.group-choice-dialog > p { margin: 0 0 24px; color: var(--muted); font-size: 16px; line-height: 1.5; }
+.group-choice-dialog form { display: grid; gap: 24px; }
+.group-choice-dialog .form-field input { font-size: 16px; }
+.group-choice-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; }
+.group-choice-actions button { min-height: 46px; padding: 12px 16px; border: 0; border-radius: 9px; font-weight: 650; line-height: 1.4; transition: background-color .15s ease; }
+.group-choice-later { color: var(--navy); background: var(--blue-soft); }
+.group-choice-later:hover { background: var(--line); }
+.group-choice-save { color: var(--paper); background: var(--blue); }
+.group-choice-save:hover { background: var(--navy); }
+.group-choice-retry { min-height: 44px; padding: 8px 0; color: var(--blue); background: transparent; border: 0; text-align: left; text-decoration: underline; }
+.group-choice-dialog button:disabled { opacity: .55; cursor: wait; }
+.group-choice-dialog button:focus-visible, .group-choice-dialog a:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+@media (max-width: 480px) {
+  .group-choice-dialog { padding: 24px; }
+  .group-choice-actions { flex-direction: column; }
+  .group-choice-actions button { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .group-choice-actions button { transition: none; }
+}

@@ -1,8 +1,9 @@
 import { CalendarDays, ClipboardList, LayoutDashboard, Plus } from "lucide-react";
-import { useRef, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { AccountMenu } from "./AccountMenu";
 import { Brand } from "./Brand";
 import { CookieNotice } from "./CookieNotice";
+import { GroupChoiceDialog } from "./GroupChoiceDialog";
 import { newTaskHref, uiRoutes } from "./uiRoutes";
 import type { BootData } from "./types";
 
@@ -27,9 +28,22 @@ function Navigation({ section, mobile = false }: { section: Section; mobile?: bo
   );
 }
 
-export function Shell({ user, children, section = "overview", createReturnTo, hideMobileAdd = false, onCreateTask }: { user: BootData; children: ReactNode; section?: "overview" | "calendar" | "tasks" | "profile"; createReturnTo?: string; hideMobileAdd?: boolean; onCreateTask?: () => void }) {
+export function Shell({ user, children, section = "overview", createReturnTo, hideMobileAdd = false, onCreateTask, allowGroupPrompt = true }: { user: BootData; children: ReactNode; section?: "overview" | "calendar" | "tasks" | "profile"; createReturnTo?: string; hideMobileAdd?: boolean; onCreateTask?: () => void; allowGroupPrompt?: boolean }) {
   const main = useRef<HTMLElement>(null);
+  const [chooseGroup, setChooseGroup] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("choose_group") === "1");
   const returnTo = createReturnTo ?? uiRoutes[section];
+
+  function finishGroupChoice(saved: boolean) {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("choose_group");
+    const destination = `${url.pathname}${url.search}${url.hash}`;
+    setChooseGroup(false);
+    if (saved) window.location.replace(destination);
+    else {
+      window.history.replaceState(window.history.state, "", destination);
+      main.current?.focus();
+    }
+  }
   return (
     <div className="shell">
       <a className="skip-link" href="#main">Перейти к содержимому</a>
@@ -56,6 +70,7 @@ export function Shell({ user, children, section = "overview", createReturnTo, hi
       </main>
 
       <Navigation section={section} mobile />
+      {allowGroupPrompt && chooseGroup && !user.group.trim() ? <GroupChoiceDialog csrfToken={user.csrfToken} onLater={() => finishGroupChoice(false)} onSaved={() => finishGroupChoice(true)} /> : null}
     </div>
   );
 }
